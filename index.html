@@ -129,9 +129,46 @@
   .filters { margin: 2px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
   .fhead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 12.5px; margin-bottom: 8px; }
   .fcount { font-weight: 600; color: var(--orange); font-size: 12px; }
-  .frow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 6px; }
+  .frow { margin-bottom: 10px; }
+  .frow-top { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 5px; }
   .frow select { padding: 7px 8px; font-size: 12.5px; min-width: 0; }
-  .frow select:disabled { opacity: .45; }
+  .combo {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    text-align: left; padding: 7px 10px; font-size: 12.5px; font-weight: 500;
+    background: var(--field); border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
+  }
+  .combo:hover { background: var(--field); border-color: #3a3a3a; }
+  .combo.empty .combo-text { color: var(--muted); }
+  .combo.open { border-color: var(--blue); }
+  .combo:disabled { opacity: .45; cursor: default; }
+  .combo-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .combo::after {
+    content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px;
+    border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .hint { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+  .hint b { color: var(--ink); font-weight: 600; }
+
+  /* Daftar pilihan (pencarian + multi pilih) */
+  #combo-pop {
+    position: fixed; z-index: 3000; display: none; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.7); overflow: hidden;
+  }
+  #combo-pop.show { display: flex; }
+  .cp-search {
+    margin: 8px 8px 4px; padding: 8px 10px; font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px; width: calc(100% - 16px);
+  }
+  .cp-actions { display: flex; justify-content: space-between; padding: 0 12px; }
+  .cp-list { overflow-y: auto; padding: 4px 0; scrollbar-color: #3a3a3a transparent; }
+  .cp-item { display: flex; align-items: center; gap: 9px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; }
+  .cp-item:hover { background: rgba(255,255,255,.06); }
+  .cp-item input { width: 15px; height: 15px; accent-color: var(--blue); flex: none; margin: 0; }
+  .cp-label { flex: 1; min-width: 0; word-break: break-word; }
+  .cp-n { color: var(--muted); font-size: 12px; flex: none; }
+  .cp-empty { padding: 14px 12px; color: var(--muted); font-size: 12.5px; }
+  .cp-foot { padding: 7px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
   .xbtn { padding: 0 9px; font-size: 16px; line-height: 1; color: var(--muted); background: var(--panel); }
   .xbtn:disabled { opacity: .35; cursor: default; }
   .factions { display: flex; gap: 14px; margin-top: 4px; }
@@ -250,6 +287,9 @@
           <option value="none">Tanpa peta dasar</option>
         </select>
       </label>
+
+      <h2>Interaksi peta</h2>
+      <p class="hint"><b>Klik</b> wilayah untuk menyorotnya. <b>Klik dua kali</b> atau <b>klik kanan</b> untuk melihat atributnya.</p>
     </div>
   </aside>
 
@@ -423,10 +463,18 @@ function select(lyr) {
   if (lyr.bringToFront) lyr.bringToFront();
 }
 
-// Highlight dilepas saat popup wilayah itu ditutup (klik area kosong, tombol tutup, dst.)
-map.on("popupclose", (e) => {
-  if (selected && selected.getPopup && selected.getPopup() === e.popup) deselect();
-});
+// Klik di area kosong peta melepas sorotan
+map.on("click", deselect);
+
+/* ---------- Popup atribut (klik dua kali atau klik kanan) ---------- */
+function showAttributes(f, latlng) {
+  const rows = Object.entries(f.properties || {})
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
+  L.popup({ maxWidth: 360 })
+    .setLatLng(latlng)
+    .setContent(`<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`)
+    .openOn(map);
+}
 
 /* ---------- Membangun lapisan peta (hanya fitur yang lolos filter) ---------- */
 function buildGeo(L_) {
@@ -438,12 +486,14 @@ function buildGeo(L_) {
     pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5 }),
     onEachFeature: (f, lyr) => {
       lyr._L = L_;
-      lyr.bindPopup(() => {
-        const rows = Object.entries(f.properties || {})
-          .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
-        return `<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`;
+      lyr.on("click", (e) => { L.DomEvent.stopPropagation(e); select(lyr); });
+      lyr.on("dblclick", (e) => { L.DomEvent.stopPropagation(e); select(lyr); showAttributes(f, e.latlng); });
+      lyr.on("contextmenu", (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (e.originalEvent) e.originalEvent.preventDefault();
+        select(lyr);
+        showAttributes(f, e.latlng);
       });
-      lyr.on("click", () => select(lyr));
       lyr.on("mouseover", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "hover")); });
       lyr.on("mouseout", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "base")); });
     },
@@ -455,14 +505,16 @@ function buildGeo(L_) {
 /* ---------- Filter wilayah ---------- */
 const norm = (v) => (v === null || v === undefined ? "" : String(v).trim());
 
+// Filter yang aktif = sudah punya atribut dan minimal satu nilai terpilih
 function activeFilters(L_, upTo) {
   return L_.filters.slice(0, upTo === undefined ? L_.filters.length : upTo)
-    .filter((f) => f.field && f.value !== "");
+    .filter((f) => f.field && f.values.length)
+    .map((f) => ({ field: f.field, set: new Set(f.values) }));
 }
 
 function matches(f, active) {
   const p = f.properties || {};
-  return active.every((a) => norm(p[a.field]) === a.value);
+  return active.every((a) => a.set.has(norm(p[a.field])));
 }
 
 function computePass(L_) {
@@ -486,13 +538,23 @@ function valueOptions(L_, k) {
   return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], "id", { numeric: true }));
 }
 
+// Buang pilihan di filter berikutnya yang sudah tidak tersedia setelah filter ke-k berubah
+function pruneLater(L_, k) {
+  for (let j = k + 1; j < L_.filters.length; j++) {
+    const f = L_.filters[j];
+    if (!f.values.length) continue;
+    const ok = new Set(valueOptions(L_, j).map((o) => o[0]));
+    f.values = f.values.filter((v) => ok.has(v));
+  }
+}
+
 function guessFilters(fields) {
   const rows = [];
   for (const group of FILTER_GUESS) {
     const hit = fields.find((f) => group.includes(f.toLowerCase()));
-    if (hit && !rows.some((r) => r.field === hit)) rows.push({ field: hit, value: "" });
+    if (hit && !rows.some((r) => r.field === hit)) rows.push({ field: hit, values: [] });
   }
-  return rows.length ? rows : [{ field: "", value: "" }];
+  return rows.length ? rows : [{ field: "", values: [] }];
 }
 
 function applyFilters(L_, zoom) {
@@ -641,6 +703,17 @@ function updateStats() {
   $("stat-fitur").textContent = layers.reduce((n, l) => n + l.passCount, 0).toLocaleString("id-ID");
 }
 
+function comboSummary(flt) {
+  if (!flt.values.length) return "Semua";
+  if (flt.values.length === 1) return flt.values[0];
+  return `${flt.values.length} dipilih`;
+}
+
+function updateCount(L_, box) {
+  box.querySelector(".fcount").textContent =
+    `${L_.passCount.toLocaleString("id-ID")} dari ${L_.features.length.toLocaleString("id-ID")}`;
+}
+
 // Menggambar ulang baris-baris filter untuk satu lapisan
 function refreshFilters(L_, box) {
   const rowsEl = box.querySelector(".frows");
@@ -649,35 +722,143 @@ function refreshFilters(L_, box) {
   L_.filters.forEach((flt, k) => {
     const row = document.createElement("div");
     row.className = "frow";
-    const opts = valueOptions(L_, k);
     row.innerHTML = `
-      <select class="f-field" aria-label="Atribut filter ${k + 1}">${fieldOptions(L_, flt.field, "Pilih atribut")}</select>
-      <select class="f-value" aria-label="Nilai filter ${k + 1}" ${flt.field ? "" : "disabled"}>
-        <option value="">Semua</option>
-        ${opts.map(([v, n]) => `<option value="${esc(v)}" ${v === flt.value ? "selected" : ""}>${esc(v)} (${n})</option>`).join("")}
-      </select>
-      <button class="xbtn" title="Hapus filter" aria-label="Hapus filter ${k + 1}" ${L_.filters.length > 1 ? "" : "disabled"}>&times;</button>`;
+      <div class="frow-top">
+        <select class="f-field" aria-label="Atribut filter ${k + 1}">${fieldOptions(L_, flt.field, "Pilih atribut")}</select>
+        <button class="xbtn" title="Hapus filter" aria-label="Hapus filter ${k + 1}" ${L_.filters.length > 1 ? "" : "disabled"}>&times;</button>
+      </div>
+      <button class="combo ${flt.values.length ? "" : "empty"}" aria-haspopup="listbox" ${flt.field ? "" : "disabled"}>
+        <span class="combo-text">${esc(comboSummary(flt))}</span>
+      </button>`;
 
     row.querySelector(".f-field").onchange = (e) => {
-      flt.field = e.target.value; flt.value = "";
-      for (let j = k + 1; j < L_.filters.length; j++) L_.filters[j].value = "";
-      applyFilters(L_, true); refreshFilters(L_, box);
-    };
-    row.querySelector(".f-value").onchange = (e) => {
-      flt.value = e.target.value;
-      for (let j = k + 1; j < L_.filters.length; j++) L_.filters[j].value = "";
+      flt.field = e.target.value; flt.values = [];
+      pruneLater(L_, k);
       applyFilters(L_, true); refreshFilters(L_, box);
     };
     row.querySelector(".xbtn").onclick = () => {
       L_.filters.splice(k, 1);
       applyFilters(L_, true); refreshFilters(L_, box);
     };
+    const btn = row.querySelector(".combo");
+    btn.onclick = () => openCombo(L_, k, btn, box);
     rowsEl.appendChild(row);
   });
 
-  box.querySelector(".fcount").textContent =
-    `${L_.passCount.toLocaleString("id-ID")} dari ${L_.features.length.toLocaleString("id-ID")}`;
+  updateCount(L_, box);
 }
+
+/* ----- Daftar pilihan dengan kolom cari dan centang banyak ----- */
+const pop = document.createElement("div");
+pop.id = "combo-pop";
+pop.innerHTML = `
+  <input type="search" class="cp-search" placeholder="Cari..." aria-label="Cari nilai">
+  <div class="cp-actions">
+    <button class="linkbtn" data-a="all">Pilih semua hasil</button>
+    <button class="linkbtn" data-a="none">Kosongkan</button>
+  </div>
+  <div class="cp-list" role="listbox" aria-multiselectable="true"></div>
+  <div class="cp-foot"></div>`;
+document.body.appendChild(pop);
+const cpSearch = pop.querySelector(".cp-search");
+const cpList = pop.querySelector(".cp-list");
+const cpFoot = pop.querySelector(".cp-foot");
+let ctx = null; // { L_, k, btn, box, opts, changed }
+
+function renderPopList() {
+  const flt = ctx.L_.filters[ctx.k];
+  const q = cpSearch.value.trim().toLowerCase();
+  const sel = new Set(flt.values);
+  ctx.shown = ctx.opts.filter(([v]) => !q || v.toLowerCase().includes(q));
+  cpList.innerHTML = ctx.shown.length
+    ? ctx.shown.map(([v, n]) => `
+        <label class="cp-item" role="option">
+          <input type="checkbox" data-v="${esc(v)}" ${sel.has(v) ? "checked" : ""}>
+          <span class="cp-label">${esc(v)}</span><span class="cp-n">${n}</span>
+        </label>`).join("")
+    : `<div class="cp-empty">Tidak ada hasil</div>`;
+  cpFoot.textContent = `${flt.values.length} dipilih dari ${ctx.opts.length}`;
+}
+
+// Terapkan perubahan pilihan langsung ke peta (tanpa zoom, supaya tidak melompat saat mencentang)
+function commitLive() {
+  const { L_, k, btn, box } = ctx;
+  const flt = L_.filters[k];
+  ctx.changed = true;
+  applyFilters(L_, false);
+  btn.querySelector(".combo-text").textContent = comboSummary(flt);
+  btn.classList.toggle("empty", !flt.values.length);
+  updateCount(L_, box);
+  renderPopList();
+}
+
+function positionPop() {
+  const r = ctx.btn.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(Math.max(r.width, 280), vw - 16);
+  const left = Math.min(Math.max(8, r.left), vw - w - 8);
+  const below = vh - r.bottom - 8, above = r.top - 8;
+  const up = below < 300 && above > below;
+  const space = up ? above : below;
+  pop.style.width = w + "px";
+  pop.style.left = left + "px";
+  cpList.style.maxHeight = Math.max(140, Math.min(320, space - 125)) + "px";
+  if (up) { pop.style.top = "auto"; pop.style.bottom = (vh - r.top + 4) + "px"; }
+  else { pop.style.bottom = "auto"; pop.style.top = (r.bottom + 4) + "px"; }
+}
+
+function openCombo(L_, k, btn, box) {
+  if (ctx && ctx.btn === btn) { closePop(); return; }
+  closePop();
+  ctx = { L_, k, btn, box, opts: valueOptions(L_, k), shown: [], changed: false };
+  cpSearch.value = "";
+  renderPopList();
+  btn.classList.add("open");
+  pop.classList.add("show");
+  positionPop();
+  cpSearch.focus();
+}
+
+function closePop() {
+  if (!ctx) return;
+  const c = ctx;
+  ctx = null;
+  pop.classList.remove("show");
+  c.btn.classList.remove("open");
+  if (c.changed) {
+    pruneLater(c.L_, c.k);
+    applyFilters(c.L_, true);   // zoom sekali setelah selesai memilih
+    refreshFilters(c.L_, c.box);
+  }
+}
+
+cpSearch.oninput = () => renderPopList();
+cpList.onchange = (e) => {
+  const cb = e.target;
+  if (!cb.matches || !cb.matches("input[type=checkbox]")) return;
+  const flt = ctx.L_.filters[ctx.k];
+  const v = cb.dataset.v;
+  if (cb.checked) { if (!flt.values.includes(v)) flt.values.push(v); }
+  else flt.values = flt.values.filter((x) => x !== v);
+  commitLive();
+};
+pop.addEventListener("click", (e) => {
+  const a = e.target.dataset && e.target.dataset.a;
+  if (!a || !ctx) return;
+  const flt = ctx.L_.filters[ctx.k];
+  if (a === "all") ctx.shown.forEach(([v]) => { if (!flt.values.includes(v)) flt.values.push(v); });
+  if (a === "none") flt.values = [];
+  commitLive();
+});
+document.addEventListener("pointerdown", (e) => {
+  if (!ctx || pop.contains(e.target) || ctx.btn.contains(e.target)) return;
+  closePop();
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ctx) { const b = ctx.btn; closePop(); b.focus(); }
+});
+window.addEventListener("resize", closePop);
+document.querySelector(".sb-body").addEventListener("scroll", closePop);
 
 function renderPanel() {
   updateStats();
@@ -719,11 +900,11 @@ function renderPanel() {
     const box = div.querySelector(".filters");
     refreshFilters(L_, box);
     box.querySelector('[data-act="addf"]').onclick = () => {
-      L_.filters.push({ field: "", value: "" });
+      L_.filters.push({ field: "", values: [] });
       refreshFilters(L_, box);
     };
     box.querySelector('[data-act="resetf"]').onclick = () => {
-      L_.filters.forEach((f) => (f.value = ""));
+      L_.filters.forEach((f) => (f.values = []));
       applyFilters(L_, true); refreshFilters(L_, box);
     };
 
