@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Peta BPS Selayar | Statistik Sosial Selayar</title>
+<title>Peta Selayar | Statistik Sosial Selayar</title>
 <link rel="icon" type="image/png" href="logo-bps.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,13 +13,13 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #0d141d;
-    --panel: #141d2a;
-    --card: #1a2536;
-    --field: #0f1722;
-    --line: #26344a;
-    --ink: #e8eef6;
-    --muted: #8d9db3;
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --card: #121212;
+    --field: #000000;
+    --line: #262626;
+    --ink: #f2f2f2;
+    --muted: #8c8c8c;
     --blue: #1a9bef;
     --blue-soft: rgba(26,155,239,.14);
     --orange: #f28c1f;
@@ -76,7 +76,7 @@
     transition: margin-left .2s ease;
   }
   #sidebar.hidden { margin-left: -340px; }
-  .sb-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-color: #33445e transparent; }
+  .sb-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-color: #3a3a3a transparent; }
 
   h2 { font-size: 14px; margin: 22px 0 10px; font-weight: 700; }
   h2:first-child { margin-top: 0; }
@@ -97,13 +97,13 @@
     font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 8px 14px;
     border: 1px solid var(--line); background: var(--card); color: var(--ink);
   }
-  button:hover { background: #223049; }
+  button:hover { background: #222222; }
   button.primary { background: var(--orange); border-color: var(--orange); color: #1a1004; width: 100%; margin-top: 10px; }
   button.primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
   button.danger { color: var(--danger); }
 
   .drop {
-    border: 1.5px dashed #3a4c68; border-radius: 12px; padding: 14px 12px;
+    border: 1.5px dashed #3a3a3a; border-radius: 12px; padding: 14px 12px;
     text-align: center; color: var(--muted); background: var(--field); cursor: pointer; font-size: 12.5px;
   }
   .drop.over { border-color: var(--blue); background: var(--blue-soft); color: var(--ink); }
@@ -122,22 +122,35 @@
   .layer-meta { font-size: 12px; color: var(--muted); margin: -4px 0 10px 24px; }
   .layer-actions { display: flex; gap: 6px; margin-top: 4px; }
   .layer-actions button { flex: 1; font-size: 12.5px; padding: 6px; background: var(--panel); }
-  .layer-actions button:hover { background: #223049; }
+  .layer-actions button:hover { background: #222222; }
   .empty { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+
+  /* Filter wilayah */
+  .filters { margin: 2px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .fhead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 12.5px; margin-bottom: 8px; }
+  .fcount { font-weight: 600; color: var(--orange); font-size: 12px; }
+  .frow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 6px; }
+  .frow select { padding: 7px 8px; font-size: 12.5px; min-width: 0; }
+  .frow select:disabled { opacity: .45; }
+  .xbtn { padding: 0 9px; font-size: 16px; line-height: 1; color: var(--muted); background: var(--panel); }
+  .xbtn:disabled { opacity: .35; cursor: default; }
+  .factions { display: flex; gap: 14px; margin-top: 4px; }
+  .linkbtn { background: none; border: 0; padding: 4px 0; color: var(--blue); font-size: 12.5px; }
+  .linkbtn:hover { background: none; text-decoration: underline; }
 
   /* ---------- Peta ---------- */
   #map-wrap {
     flex: 1; position: relative; min-width: 0; overflow: hidden;
     border: 1px solid var(--line); border-radius: 16px;
   }
-  #map { position: absolute; inset: 0; background: #0b1119; }
+  #map { position: absolute; inset: 0; background: #000000; }
   #toggle {
     position: absolute; top: 10px; left: 10px; z-index: 900;
     box-shadow: 0 2px 8px rgba(0,0,0,.45); background: var(--panel);
   }
   #status {
     position: absolute; left: 10px; bottom: 24px; z-index: 900;
-    background: rgba(20,29,42,.92); border: 1px solid var(--line);
+    background: rgba(10,10,10,.92); border: 1px solid var(--line);
     padding: 5px 11px; border-radius: 999px; font-size: 12px; color: var(--muted);
     pointer-events: none;
   }
@@ -151,7 +164,7 @@
   .leaflet-bar { border: 1px solid var(--line) !important; box-shadow: 0 2px 8px rgba(0,0,0,.45) !important; }
   .leaflet-bar a { background: var(--panel); color: var(--ink); border-bottom-color: var(--line); }
   .leaflet-bar a:hover { background: var(--card); color: var(--ink); }
-  .leaflet-control-attribution { background: rgba(13,20,29,.82) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution { background: rgba(0,0,0,.85) !important; color: var(--muted) !important; }
   .leaflet-control-attribution a { color: #6bb7ee !important; }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--ink); }
   .leaflet-popup-content-wrapper { border: 1px solid var(--line); border-radius: 12px; }
@@ -199,7 +212,7 @@
   </div>
   <div class="stats">
     <div class="pill"><b id="stat-layer">0</b>lapisan</div>
-    <div class="pill o"><b id="stat-fitur">0</b>wilayah dimuat</div>
+    <div class="pill o"><b id="stat-fitur">0</b>wilayah tampil</div>
   </div>
 </header>
 
@@ -264,11 +277,21 @@ const AUTO_LAYERS = [
 // Atribut yang dicoba dipilih otomatis sebagai label (urutan prioritas)
 const LABEL_GUESS = ["nmsls", "nama_sls", "sls", "nama", "name", "label", "nmdesa", "nmkel", "nmkec"];
 
+// Atribut yang dicoba dipasang otomatis sebagai baris filter (kecamatan, desa, SLS)
+const FILTER_GUESS = [
+  ["nmkec", "nama_kec", "nm_kec", "kecamatan", "kec"],
+  ["nmdesa", "nmkel", "nmdesakel", "nama_desa", "nm_desa", "nm_kel", "desa", "kelurahan"],
+  ["nmsls", "nama_sls", "sls"],
+];
+
 // Warna awal tiap lapisan
 const PALETTE = ["#f28c1f", "#1a9bef", "#6cba33", "#ffd400", "#e41a1c", "#c05bff"];
 
 // Batas jumlah label yang digambar sekaligus (menjaga peta tetap lancar)
 const MAX_LABELS = 1500;
+
+// Ketebalan garis: normal, saat kursor di atas wilayah, dan saat wilayah dipilih (diklik)
+const W_BASE = 1.6, W_HOVER = 2.4, W_SELECTED = 3.6;
 
 /* ===================================================================== */
 
@@ -306,6 +329,7 @@ setBase("sat");
 const labelGroup = L.layerGroup().addTo(map);
 const layers = [];   // semua lapisan data
 let nextId = 1;
+let selected = null; // poligon yang sedang di-highlight
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -365,6 +389,122 @@ function firstCoord(geom) {
   return c;
 }
 
+/* ---------- Gaya poligon dan highlight ---------- */
+function styleFor(lyr, state) {
+  const L_ = lyr._L;
+  const isPt = lyr instanceof L.CircleMarker;
+  const sel = state === "selected", hov = state === "hover";
+  return {
+    color: L_.color,
+    weight: sel ? W_SELECTED : hov ? W_HOVER : W_BASE,
+    opacity: 1,
+    fillColor: L_.color,
+    fillOpacity: isPt ? 0.7 : (sel ? Math.max(L_.fillOpacity, 0.2) : L_.fillOpacity),
+    ...(isPt ? { radius: sel ? 7 : 5 } : {}),
+  };
+}
+
+function restyle(L_) {
+  if (!L_.geo) return;
+  L_.geo.eachLayer((l) => l.setStyle && l.setStyle(styleFor(l, selected === l ? "selected" : "base")));
+}
+
+function deselect() {
+  if (!selected) return;
+  const l = selected;
+  selected = null;
+  if (l.setStyle) l.setStyle(styleFor(l, "base"));
+}
+
+function select(lyr) {
+  if (selected && selected !== lyr) deselect();
+  selected = lyr;
+  if (lyr.setStyle) lyr.setStyle(styleFor(lyr, "selected"));
+  if (lyr.bringToFront) lyr.bringToFront();
+}
+
+// Highlight dilepas saat popup wilayah itu ditutup (klik area kosong, tombol tutup, dst.)
+map.on("popupclose", (e) => {
+  if (selected && selected.getPopup && selected.getPopup() === e.popup) deselect();
+});
+
+/* ---------- Membangun lapisan peta (hanya fitur yang lolos filter) ---------- */
+function buildGeo(L_) {
+  if (L_.geo) map.removeLayer(L_.geo);
+  if (selected && selected._L === L_) selected = null;
+
+  const feats = L_.features.filter((f, i) => L_.pass[i]);
+  L_.geo = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5 }),
+    onEachFeature: (f, lyr) => {
+      lyr._L = L_;
+      lyr.bindPopup(() => {
+        const rows = Object.entries(f.properties || {})
+          .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
+        return `<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`;
+      });
+      lyr.on("click", () => select(lyr));
+      lyr.on("mouseover", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "hover")); });
+      lyr.on("mouseout", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "base")); });
+    },
+  });
+  restyle(L_);
+  if (L_.visible) L_.geo.addTo(map);
+}
+
+/* ---------- Filter wilayah ---------- */
+const norm = (v) => (v === null || v === undefined ? "" : String(v).trim());
+
+function activeFilters(L_, upTo) {
+  return L_.filters.slice(0, upTo === undefined ? L_.filters.length : upTo)
+    .filter((f) => f.field && f.value !== "");
+}
+
+function matches(f, active) {
+  const p = f.properties || {};
+  return active.every((a) => norm(p[a.field]) === a.value);
+}
+
+function computePass(L_) {
+  const active = activeFilters(L_);
+  L_.pass = L_.features.map((f) => matches(f, active));
+  L_.passCount = L_.pass.reduce((n, v) => n + (v ? 1 : 0), 0);
+}
+
+// Pilihan nilai untuk baris filter ke-k: hanya dari fitur yang lolos filter sebelumnya
+function valueOptions(L_, k) {
+  const fld = L_.filters[k].field;
+  if (!fld) return [];
+  const active = activeFilters(L_, k);
+  const counts = new Map();
+  for (const f of L_.features) {
+    if (!matches(f, active)) continue;
+    const v = norm((f.properties || {})[fld]);
+    if (v === "") continue;
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], "id", { numeric: true }));
+}
+
+function guessFilters(fields) {
+  const rows = [];
+  for (const group of FILTER_GUESS) {
+    const hit = fields.find((f) => group.includes(f.toLowerCase()));
+    if (hit && !rows.some((r) => r.field === hit)) rows.push({ field: hit, value: "" });
+  }
+  return rows.length ? rows : [{ field: "", value: "" }];
+}
+
+function applyFilters(L_, zoom) {
+  computePass(L_);
+  buildGeo(L_);
+  updateStats();
+  renderLabels();
+  if (!zoom) return;
+  if (L_.passCount === 0) { toast("Tidak ada wilayah yang cocok dengan filter ini."); return; }
+  zoomTo(L_);
+}
+
 /* ---------- Memuat data ---------- */
 function normalize(json) {
   if (json.type === "FeatureCollection") return json.features || [];
@@ -398,24 +538,14 @@ function addDataset(name, json) {
     labelA: guessField || "",
     labelB: "",
     geo: null,
+    filters: guessFilters(fields),
+    pass: features.map(() => true),
+    passCount: features.length,
     points: features.map((f) => labelPoint(f.geometry)),
   };
 
-  L_.geo = L.geoJSON({ type: "FeatureCollection", features }, {
-    style: () => ({ color: L_.color, weight: 1.6, opacity: 1, fillColor: L_.color, fillOpacity: L_.fillOpacity }),
-    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: L_.color, weight: 1.5, fillColor: L_.color, fillOpacity: .7 }),
-    onEachFeature: (f, lyr) => {
-      lyr.bindPopup(() => {
-        const rows = Object.entries(f.properties || {})
-          .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
-        return `<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`;
-      });
-      lyr.on("mouseover", () => { if (lyr.setStyle) lyr.setStyle({ weight: 3.2 }); });
-      lyr.on("mouseout", () => { if (lyr.setStyle) lyr.setStyle({ weight: 1.6 }); });
-    },
-  }).addTo(map);
-
   layers.push(L_);
+  buildGeo(L_);
   renderPanel();
   renderLabels();
   zoomTo(L_);
@@ -468,6 +598,7 @@ function renderLabels() {
     for (const L_ of layers) {
       if (!L_.visible || !L_.labelA) continue;
       for (let i = 0; i < L_.features.length; i++) {
+        if (!L_.pass[i]) continue;
         const pt = L_.points[i];
         if (!pt || !b.contains(pt)) continue;
         const txt = labelText(L_, L_.features[i]);
@@ -495,18 +626,57 @@ function renderLabels() {
 
 /* ---------- Panel lapisan ---------- */
 function zoomTo(L_) {
+  if (!L_.geo) return;
   const b = L_.geo.getBounds();
   if (b.isValid()) map.fitBounds(b, { padding: [30, 30] });
 }
 
-function fieldOptions(L_, selected, allowNone) {
-  const none = `<option value="">${allowNone}</option>`;
-  return none + L_.fields.map((f) => `<option value="${esc(f)}" ${f === selected ? "selected" : ""}>${esc(f)}</option>`).join("");
+function fieldOptions(L_, selectedField, noneLabel) {
+  const none = `<option value="">${noneLabel}</option>`;
+  return none + L_.fields.map((f) => `<option value="${esc(f)}" ${f === selectedField ? "selected" : ""}>${esc(f)}</option>`).join("");
 }
 
 function updateStats() {
   $("stat-layer").textContent = layers.length.toLocaleString("id-ID");
-  $("stat-fitur").textContent = layers.reduce((n, l) => n + l.features.length, 0).toLocaleString("id-ID");
+  $("stat-fitur").textContent = layers.reduce((n, l) => n + l.passCount, 0).toLocaleString("id-ID");
+}
+
+// Menggambar ulang baris-baris filter untuk satu lapisan
+function refreshFilters(L_, box) {
+  const rowsEl = box.querySelector(".frows");
+  rowsEl.innerHTML = "";
+
+  L_.filters.forEach((flt, k) => {
+    const row = document.createElement("div");
+    row.className = "frow";
+    const opts = valueOptions(L_, k);
+    row.innerHTML = `
+      <select class="f-field" aria-label="Atribut filter ${k + 1}">${fieldOptions(L_, flt.field, "Pilih atribut")}</select>
+      <select class="f-value" aria-label="Nilai filter ${k + 1}" ${flt.field ? "" : "disabled"}>
+        <option value="">Semua</option>
+        ${opts.map(([v, n]) => `<option value="${esc(v)}" ${v === flt.value ? "selected" : ""}>${esc(v)} (${n})</option>`).join("")}
+      </select>
+      <button class="xbtn" title="Hapus filter" aria-label="Hapus filter ${k + 1}" ${L_.filters.length > 1 ? "" : "disabled"}>&times;</button>`;
+
+    row.querySelector(".f-field").onchange = (e) => {
+      flt.field = e.target.value; flt.value = "";
+      for (let j = k + 1; j < L_.filters.length; j++) L_.filters[j].value = "";
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+    row.querySelector(".f-value").onchange = (e) => {
+      flt.value = e.target.value;
+      for (let j = k + 1; j < L_.filters.length; j++) L_.filters[j].value = "";
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+    row.querySelector(".xbtn").onclick = () => {
+      L_.filters.splice(k, 1);
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+    rowsEl.appendChild(row);
+  });
+
+  box.querySelector(".fcount").textContent =
+    `${L_.passCount.toLocaleString("id-ID")} dari ${L_.features.length.toLocaleString("id-ID")}`;
 }
 
 function renderPanel() {
@@ -525,6 +695,16 @@ function renderPanel() {
         <input type="color" value="${L_.color}" aria-label="Warna garis">
       </div>
       <div class="layer-meta">${L_.features.length.toLocaleString("id-ID")} fitur</div>
+
+      <div class="filters">
+        <div class="fhead"><span>Filter wilayah</span><span class="fcount"></span></div>
+        <div class="frows"></div>
+        <div class="factions">
+          <button class="linkbtn" data-act="addf">+ Tambah filter</button>
+          <button class="linkbtn" data-act="resetf">Reset filter</button>
+        </div>
+      </div>
+
       <label class="field"><span>Label utama</span>
         <select data-k="a">${fieldOptions(L_, L_.labelA, "Tanpa label")}</select></label>
       <label class="field"><span>Label tambahan (digabung di sebelahnya)</span>
@@ -536,6 +716,17 @@ function renderPanel() {
         <button data-act="del" class="danger">Hapus</button>
       </div>`;
 
+    const box = div.querySelector(".filters");
+    refreshFilters(L_, box);
+    box.querySelector('[data-act="addf"]').onclick = () => {
+      L_.filters.push({ field: "", value: "" });
+      refreshFilters(L_, box);
+    };
+    box.querySelector('[data-act="resetf"]').onclick = () => {
+      L_.filters.forEach((f) => (f.value = ""));
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+
     const [chk, color] = div.querySelectorAll(".layer-top input");
     chk.onchange = () => {
       L_.visible = chk.checked;
@@ -543,14 +734,11 @@ function renderPanel() {
       if (L_.visible) L_.geo.addTo(map); else map.removeLayer(L_.geo);
       renderLabels();
     };
-    color.oninput = () => { L_.color = color.value; L_.geo.setStyle({ color: L_.color, fillColor: L_.color }); };
+    color.oninput = () => { L_.color = color.value; restyle(L_); };
 
     div.querySelector('select[data-k="a"]').onchange = (e) => { L_.labelA = e.target.value; renderLabels(); };
     div.querySelector('select[data-k="b"]').onchange = (e) => { L_.labelB = e.target.value; renderLabels(); };
-    div.querySelector('input[type=range]').oninput = (e) => {
-      L_.fillOpacity = +e.target.value;
-      L_.geo.setStyle({ fillOpacity: L_.fillOpacity });
-    };
+    div.querySelector('input[type=range]').oninput = (e) => { L_.fillOpacity = +e.target.value; restyle(L_); };
     div.querySelector('[data-act="zoom"]').onclick = () => zoomTo(L_);
     div.querySelector('[data-act="del"]').onclick = () => {
       map.removeLayer(L_.geo);
