@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Peta Selayar | Statistik Sosial Selayar</title>
+<link rel="icon" type="image/png" href="assets/logo-bps.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d141d;
+    --panel: #141d2a;
+    --card: #1a2536;
+    --field: #0f1722;
+    --line: #26344a;
+    --ink: #e8eef6;
+    --muted: #8d9db3;
+    --blue: #1a9bef;
+    --blue-soft: rgba(26,155,239,.14);
+    --orange: #f28c1f;
+    --orange-dark: #d9770f;
+    --green: #6cba33;
+    --danger: #ff7a6e;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  .app-head {
+    flex: none;
+    margin: 10px 10px 0;
+    padding: 8px 18px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--blue);
+    border-radius: 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .app-head img { height: 44px; width: auto; display: block; }
+  .titles { min-width: 0; }
+  .titles h1 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
+  .titles h1 b { color: var(--blue); font-weight: 800; }
+  .titles p { margin: 1px 0 0; font-size: 13px; font-weight: 600; color: var(--orange); }
+  .stats { margin-left: auto; display: flex; gap: 10px; }
+  .pill {
+    background: var(--blue-soft); border-radius: 999px; padding: 6px 14px;
+    color: var(--muted); font-size: 12.5px; white-space: nowrap;
+  }
+  .pill b { color: var(--blue); font-size: 18px; font-weight: 700; margin-right: 4px; }
+  .pill.o { background: rgba(242,140,31,.14); }
+  .pill.o b { color: var(--orange); }
+
+  .app-body { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 10px; }
+
+  /* ---------- Panel samping ---------- */
+  #sidebar {
+    width: 330px; flex: none;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: margin-left .2s ease;
+  }
+  #sidebar.hidden { margin-left: -340px; }
+  .sb-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-color: #33445e transparent; }
+
+  h2 { font-size: 14px; margin: 22px 0 10px; font-weight: 700; }
+  h2:first-child { margin-top: 0; }
+
+  label.field { display: block; margin-bottom: 12px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  label.field > span { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  label.field > span b { color: var(--ink); }
+  select {
+    width: 100%; padding: 8px 10px; font: inherit; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; background: var(--field);
+  }
+  input[type=range] { width: 100%; accent-color: var(--orange); }
+  select:focus-visible, input:focus-visible, button:focus-visible, .drop:focus-visible {
+    outline: 2px solid var(--blue); outline-offset: 2px;
+  }
+
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 8px 14px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  }
+  button:hover { background: #223049; }
+  button.primary { background: var(--orange); border-color: var(--orange); color: #1a1004; width: 100%; margin-top: 10px; }
+  button.primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+  button.danger { color: var(--danger); }
+
+  .drop {
+    border: 1.5px dashed #3a4c68; border-radius: 12px; padding: 14px 12px;
+    text-align: center; color: var(--muted); background: var(--field); cursor: pointer; font-size: 12.5px;
+  }
+  .drop.over { border-color: var(--blue); background: var(--blue-soft); color: var(--ink); }
+  .drop strong { color: var(--ink); display: block; margin-bottom: 2px; font-size: 13px; }
+
+  /* Kartu lapisan */
+  .layer { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 12px; }
+  .layer.off { opacity: .6; }
+  .layer-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .layer-top input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--blue); flex: none; }
+  .layer-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer-top input[type=color] {
+    width: 28px; height: 28px; padding: 0; border: 1px solid var(--line);
+    border-radius: 8px; background: none; cursor: pointer; flex: none;
+  }
+  .layer-meta { font-size: 12px; color: var(--muted); margin: -4px 0 10px 24px; }
+  .layer-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .layer-actions button { flex: 1; font-size: 12.5px; padding: 6px; background: var(--panel); }
+  .layer-actions button:hover { background: #223049; }
+  .empty { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+
+  /* ---------- Peta ---------- */
+  #map-wrap {
+    flex: 1; position: relative; min-width: 0; overflow: hidden;
+    border: 1px solid var(--line); border-radius: 16px;
+  }
+  #map { position: absolute; inset: 0; background: #0b1119; }
+  #toggle {
+    position: absolute; top: 10px; left: 10px; z-index: 900;
+    box-shadow: 0 2px 8px rgba(0,0,0,.45); background: var(--panel);
+  }
+  #status {
+    position: absolute; left: 10px; bottom: 24px; z-index: 900;
+    background: rgba(20,29,42,.92); border: 1px solid var(--line);
+    padding: 5px 11px; border-radius: 999px; font-size: 12px; color: var(--muted);
+    pointer-events: none;
+  }
+  #toast {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1100;
+    background: var(--orange); color: #1a1004; padding: 9px 16px; border-radius: 12px;
+    max-width: 90%; display: none; font-size: 13px; font-weight: 600;
+  }
+
+  /* Kontrol Leaflet bertema gelap */
+  .leaflet-bar { border: 1px solid var(--line) !important; box-shadow: 0 2px 8px rgba(0,0,0,.45) !important; }
+  .leaflet-bar a { background: var(--panel); color: var(--ink); border-bottom-color: var(--line); }
+  .leaflet-bar a:hover { background: var(--card); color: var(--ink); }
+  .leaflet-control-attribution { background: rgba(13,20,29,.82) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution a { color: #6bb7ee !important; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--ink); }
+  .leaflet-popup-content-wrapper { border: 1px solid var(--line); border-radius: 12px; }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+
+  /* ---------- Label wilayah ---------- */
+  .lbl { background: none; border: 0; }
+  .lbl span {
+    position: absolute; transform: translate(-50%, -50%);
+    white-space: nowrap; font-weight: 700; line-height: 1.15;
+    text-align: center; pointer-events: none;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    color: #fff;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000;
+  }
+  body.light-base .lbl span {
+    color: #14232b;
+    text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px #fff;
+  }
+
+  /* Popup atribut */
+  .attr-table { border-collapse: collapse; font-size: 12.5px; }
+  .attr-table td { padding: 3px 10px 3px 0; vertical-align: top; }
+  .attr-table td:first-child { color: var(--muted); white-space: nowrap; }
+  .leaflet-popup-content { max-height: 260px; overflow: auto; margin: 12px 14px; font-family: inherit; }
+
+  @media (max-width: 760px) {
+    .app-head { padding: 8px 12px; }
+    .app-head img { height: 36px; }
+    .titles h1 { font-size: 18px; }
+    .stats { display: none; }
+    .app-body { flex-direction: column-reverse; }
+    #sidebar { width: 100%; height: 46vh; margin-left: 0 !important; }
+    #sidebar.hidden { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-head">
+  <img src="assets/logo-bps.png" alt="Logo BPS">
+  <div class="titles">
+    <h1>Peta <b>Selayar</b></h1>
+    <p>Statistik Sosial Selayar</p>
+  </div>
+  <div class="stats">
+    <div class="pill"><b id="stat-layer">0</b>lapisan</div>
+    <div class="pill o"><b id="stat-fitur">0</b>wilayah dimuat</div>
+  </div>
+</header>
+
+<div class="app-body">
+  <aside id="sidebar">
+    <div class="sb-body">
+      <h2>Data wilayah</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Pilih file GeoJSON">
+        <strong>Seret file GeoJSON ke sini</strong>
+        Bisa lebih dari satu file (.geojson / .json)
+      </div>
+      <input type="file" id="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
+      <button class="primary" id="addbtn">Tambah file GeoJSON</button>
+
+      <div id="layers"></div>
+      <p class="empty" id="no-layer">Belum ada data. Tambahkan file GeoJSON hasil ekspor QGIS.</p>
+
+      <h2>Tampilan label</h2>
+      <label class="field">
+        <span>Tampilkan label mulai zoom <b id="v-minzoom">13</b></span>
+        <input type="range" id="minzoom" min="8" max="19" step="1" value="13">
+      </label>
+      <label class="field">
+        <span>Ukuran huruf <b><span id="v-fsize" style="display:inline">11</span> px</b></span>
+        <input type="range" id="fsize" min="8" max="20" step="1" value="11">
+      </label>
+
+      <h2>Peta dasar</h2>
+      <label class="field">
+        <select id="basemap">
+          <option value="sat">Citra satelit (Esri)</option>
+          <option value="esrihybrid">Satelit + jalan dan nama tempat (Esri)</option>
+          <option value="ghybrid">Google Hybrid</option>
+          <option value="osm">OpenStreetMap</option>
+          <option value="none">Tanpa peta dasar</option>
+        </select>
+      </label>
+    </div>
+  </aside>
+
+  <main id="map-wrap">
+    <button id="toggle" aria-expanded="true">Sembunyikan panel</button>
+    <div id="map"></div>
+    <div id="status">Zoom -</div>
+    <div id="toast" role="status"></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+/* =====================================================================
+   PENGATURAN
+   Jika web ini di-host (bukan dibuka langsung dari file), file GeoJSON
+   bisa dimuat otomatis. Taruh file di folder "data" lalu isi daftar ini.
+   Contoh:
+     { name: "SLS Selayar", url: "data/sls_selayar.geojson" }
+   ===================================================================== */
+const AUTO_LAYERS = [
+  // { name: "SLS Selayar", url: "data/sls_selayar.geojson" },
+];
+
+// Atribut yang dicoba dipilih otomatis sebagai label (urutan prioritas)
+const LABEL_GUESS = ["nmsls", "nama_sls", "sls", "nama", "name", "label", "nmdesa", "nmkel", "nmkec"];
+
+// Warna awal tiap lapisan
+const PALETTE = ["#f28c1f", "#1a9bef", "#6cba33", "#ffd400", "#e41a1c", "#c05bff"];
+
+// Batas jumlah label yang digambar sekaligus (menjaga peta tetap lancar)
+const MAX_LABELS = 1500;
+
+/* ===================================================================== */
+
+const map = L.map("map", { preferCanvas: true, zoomControl: true, maxZoom: 22 })
+  .setView([-6.12, 120.46], 10);
+
+const bases = {
+  sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "Citra &copy; Esri, Maxar, Earthstar Geographics" }),
+  osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "&copy; kontributor OpenStreetMap" }),
+  // Satelit Esri ditambah nama tempat dan jalan (alternatif hybrid yang resmi)
+  esrihybrid: L.layerGroup([
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "Citra &copy; Esri, Maxar, Earthstar Geographics" }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19 }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19 }),
+  ]),
+  // Google Hybrid (satelit + jalan + nama tempat). Lihat catatan ketentuan layanan Google.
+  ghybrid: L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+        { subdomains: ["0", "1", "2", "3"], maxZoom: 22, maxNativeZoom: 20, attribution: "&copy; Google" }),
+};
+const DARK_BASES = ["sat", "esrihybrid", "ghybrid"];
+let currentBase = null;
+function setBase(key) {
+  if (currentBase) map.removeLayer(currentBase);
+  currentBase = bases[key] || null;
+  if (currentBase) currentBase.addTo(map);
+  document.body.classList.toggle("light-base", !DARK_BASES.includes(key));
+}
+setBase("sat");
+
+const labelGroup = L.layerGroup().addTo(map);
+const layers = [];   // semua lapisan data
+let nextId = 1;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- Pesan singkat ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), 6000);
+}
+
+/* ---------- Geometri: titik letak label ---------- */
+function ringCentroid(ring) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x0, y0] = ring[j], [x1, y1] = ring[i];
+    const f = x0 * y1 - x1 * y0;
+    a += f; cx += (x0 + x1) * f; cy += (y0 + y1) * f;
+  }
+  a /= 2;
+  if (Math.abs(a) < 1e-14) return { area: 0, pt: ring[0] };
+  return { area: Math.abs(a), pt: [cx / (6 * a), cy / (6 * a)] };
+}
+
+function labelPoint(geom) {
+  if (!geom) return null;
+  const t = geom.type, c = geom.coordinates;
+  if (t === "Point") return [c[1], c[0]];
+  if (t === "MultiPoint") return c.length ? [c[0][1], c[0][0]] : null;
+  if (t === "LineString" || t === "MultiLineString") {
+    const line = t === "LineString" ? c : c.reduce((m, l) => (l.length > m.length ? l : m), []);
+    const p = line[Math.floor(line.length / 2)];
+    return p ? [p[1], p[0]] : null;
+  }
+  if (t === "Polygon" || t === "MultiPolygon") {
+    const polys = t === "Polygon" ? [c] : c;
+    let best = null;
+    for (const poly of polys) {
+      if (!poly[0] || poly[0].length < 3) continue;
+      const r = ringCentroid(poly[0]);
+      if (!best || r.area > best.area) best = r;
+    }
+    return best ? [best.pt[1], best.pt[0]] : null;
+  }
+  if (t === "GeometryCollection") {
+    for (const g of geom.geometries) { const p = labelPoint(g); if (p) return p; }
+  }
+  return null;
+}
+
+function firstCoord(geom) {
+  let c = geom && geom.coordinates;
+  while (Array.isArray(c) && Array.isArray(c[0])) c = c[0];
+  return c;
+}
+
+/* ---------- Memuat data ---------- */
+function normalize(json) {
+  if (json.type === "FeatureCollection") return json.features || [];
+  if (json.type === "Feature") return [json];
+  if (json.type && json.coordinates) return [{ type: "Feature", properties: {}, geometry: json }];
+  throw new Error("Format GeoJSON tidak dikenali.");
+}
+
+function addDataset(name, json) {
+  const features = normalize(json).filter((f) => f && f.geometry);
+  if (!features.length) throw new Error("Tidak ada fitur bergeometri di file ini.");
+
+  const sample = firstCoord(features[0].geometry);
+  if (sample && (Math.abs(sample[0]) > 180 || Math.abs(sample[1]) > 90)) {
+    throw new Error("Koordinat bukan lintang/bujur. Di QGIS, ekspor ulang dengan CRS EPSG:4326 (WGS 84).");
+  }
+
+  const fieldSet = new Set();
+  features.slice(0, 3000).forEach((f) => Object.keys(f.properties || {}).forEach((k) => fieldSet.add(k)));
+  const fields = [...fieldSet];
+
+  const guess = LABEL_GUESS.find((g) => fields.some((f) => f.toLowerCase() === g));
+  const guessField = guess ? fields.find((f) => f.toLowerCase() === guess) : null;
+
+  const id = nextId++;
+  const L_ = {
+    id, name, features, fields,
+    color: PALETTE[(id - 1) % PALETTE.length],
+    fillOpacity: 0,
+    visible: true,
+    labelA: guessField || "",
+    labelB: "",
+    geo: null,
+    points: features.map((f) => labelPoint(f.geometry)),
+  };
+
+  L_.geo = L.geoJSON({ type: "FeatureCollection", features }, {
+    style: () => ({ color: L_.color, weight: 1.6, opacity: 1, fillColor: L_.color, fillOpacity: L_.fillOpacity }),
+    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: L_.color, weight: 1.5, fillColor: L_.color, fillOpacity: .7 }),
+    onEachFeature: (f, lyr) => {
+      lyr.bindPopup(() => {
+        const rows = Object.entries(f.properties || {})
+          .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
+        return `<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`;
+      });
+      lyr.on("mouseover", () => { if (lyr.setStyle) lyr.setStyle({ weight: 3.2 }); });
+      lyr.on("mouseout", () => { if (lyr.setStyle) lyr.setStyle({ weight: 1.6 }); });
+    },
+  }).addTo(map);
+
+  layers.push(L_);
+  renderPanel();
+  renderLabels();
+  zoomTo(L_);
+}
+
+async function readFiles(fileList) {
+  for (const file of fileList) {
+    try {
+      const text = await file.text();
+      addDataset(file.name.replace(/\.(geo)?json$/i, ""), JSON.parse(text));
+    } catch (e) {
+      toast(`${file.name}: ${e.message}`);
+    }
+  }
+}
+
+async function loadAuto() {
+  for (const item of AUTO_LAYERS) {
+    try {
+      const r = await fetch(item.url);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      addDataset(item.name, await r.json());
+    } catch (e) {
+      toast(`Gagal memuat ${item.url}. Pastikan web dibuka lewat server, bukan langsung dari file.`);
+    }
+  }
+}
+
+/* ---------- Label ---------- */
+function labelText(L_, f) {
+  const p = f.properties || {};
+  const parts = [L_.labelA, L_.labelB]
+    .filter(Boolean)
+    .map((k) => p[k])
+    .filter((v) => v !== null && v !== undefined && String(v).trim() !== "")
+    .map((v) => String(v).trim());
+  return parts.join(" ");
+}
+
+function renderLabels() {
+  labelGroup.clearLayers();
+  const z = map.getZoom();
+  const minZ = +$("minzoom").value;
+  const fs = +$("fsize").value;
+  let shown = 0, hidden = false;
+
+  if (z >= minZ) {
+    const b = map.getBounds().pad(0.15);
+    outer:
+    for (const L_ of layers) {
+      if (!L_.visible || !L_.labelA) continue;
+      for (let i = 0; i < L_.features.length; i++) {
+        const pt = L_.points[i];
+        if (!pt || !b.contains(pt)) continue;
+        const txt = labelText(L_, L_.features[i]);
+        if (!txt) continue;
+        if (shown >= MAX_LABELS) { hidden = true; break outer; }
+        L.marker(pt, {
+          interactive: false, keyboard: false,
+          icon: L.divIcon({
+            className: "lbl", iconSize: [0, 0],
+            html: `<span style="font-size:${fs}px">${esc(txt)}</span>`,
+          }),
+        }).addTo(labelGroup);
+        shown++;
+      }
+    }
+  }
+
+  let msg = `Zoom ${z}`;
+  if (layers.some((l) => l.visible && l.labelA)) {
+    if (z < minZ) msg += `, label muncul mulai zoom ${minZ}`;
+    else msg += `, ${shown.toLocaleString("id-ID")} label${hidden ? " (dibatasi, zoom lebih dekat)" : ""}`;
+  }
+  $("status").textContent = msg;
+}
+
+/* ---------- Panel lapisan ---------- */
+function zoomTo(L_) {
+  const b = L_.geo.getBounds();
+  if (b.isValid()) map.fitBounds(b, { padding: [30, 30] });
+}
+
+function fieldOptions(L_, selected, allowNone) {
+  const none = `<option value="">${allowNone}</option>`;
+  return none + L_.fields.map((f) => `<option value="${esc(f)}" ${f === selected ? "selected" : ""}>${esc(f)}</option>`).join("");
+}
+
+function updateStats() {
+  $("stat-layer").textContent = layers.length.toLocaleString("id-ID");
+  $("stat-fitur").textContent = layers.reduce((n, l) => n + l.features.length, 0).toLocaleString("id-ID");
+}
+
+function renderPanel() {
+  updateStats();
+  const host = $("layers");
+  host.innerHTML = "";
+  $("no-layer").style.display = layers.length ? "none" : "block";
+
+  layers.forEach((L_) => {
+    const div = document.createElement("div");
+    div.className = "layer" + (L_.visible ? "" : " off");
+    div.innerHTML = `
+      <div class="layer-top">
+        <input type="checkbox" ${L_.visible ? "checked" : ""} aria-label="Tampilkan batas wilayah ${esc(L_.name)}">
+        <span class="layer-name" title="${esc(L_.name)}">${esc(L_.name)}</span>
+        <input type="color" value="${L_.color}" aria-label="Warna garis">
+      </div>
+      <div class="layer-meta">${L_.features.length.toLocaleString("id-ID")} fitur</div>
+      <label class="field"><span>Label utama</span>
+        <select data-k="a">${fieldOptions(L_, L_.labelA, "Tanpa label")}</select></label>
+      <label class="field"><span>Label tambahan (digabung di sebelahnya)</span>
+        <select data-k="b">${fieldOptions(L_, L_.labelB, "Tidak ada")}</select></label>
+      <label class="field"><span>Warna isi poligon</span>
+        <input type="range" min="0" max="0.7" step="0.05" value="${L_.fillOpacity}"></label>
+      <div class="layer-actions">
+        <button data-act="zoom">Zoom ke wilayah</button>
+        <button data-act="del" class="danger">Hapus</button>
+      </div>`;
+
+    const [chk, color] = div.querySelectorAll(".layer-top input");
+    chk.onchange = () => {
+      L_.visible = chk.checked;
+      div.classList.toggle("off", !L_.visible);
+      if (L_.visible) L_.geo.addTo(map); else map.removeLayer(L_.geo);
+      renderLabels();
+    };
+    color.oninput = () => { L_.color = color.value; L_.geo.setStyle({ color: L_.color, fillColor: L_.color }); };
+
+    div.querySelector('select[data-k="a"]').onchange = (e) => { L_.labelA = e.target.value; renderLabels(); };
+    div.querySelector('select[data-k="b"]').onchange = (e) => { L_.labelB = e.target.value; renderLabels(); };
+    div.querySelector('input[type=range]').oninput = (e) => {
+      L_.fillOpacity = +e.target.value;
+      L_.geo.setStyle({ fillOpacity: L_.fillOpacity });
+    };
+    div.querySelector('[data-act="zoom"]').onclick = () => zoomTo(L_);
+    div.querySelector('[data-act="del"]').onclick = () => {
+      map.removeLayer(L_.geo);
+      layers.splice(layers.indexOf(L_), 1);
+      renderPanel();
+      renderLabels();
+    };
+    host.appendChild(div);
+  });
+}
+
+/* ---------- Kontrol umum ---------- */
+const drop = $("drop"), fileInput = $("file");
+drop.onclick = () => fileInput.click();
+$("addbtn").onclick = () => fileInput.click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } };
+fileInput.onchange = () => { readFiles(fileInput.files); fileInput.value = ""; };
+
+["dragenter", "dragover"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+document.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+
+$("minzoom").oninput = (e) => { $("v-minzoom").textContent = e.target.value; renderLabels(); };
+$("fsize").oninput = (e) => { $("v-fsize").textContent = e.target.value; renderLabels(); };
+$("basemap").onchange = (e) => setBase(e.target.value);
+
+$("toggle").onclick = () => {
+  const sb = $("sidebar");
+  const hide = !sb.classList.contains("hidden");
+  sb.classList.toggle("hidden", hide);
+  $("toggle").textContent = hide ? "Tampilkan panel" : "Sembunyikan panel";
+  $("toggle").setAttribute("aria-expanded", String(!hide));
+  setTimeout(() => map.invalidateSize(), 250);
+};
+
+map.on("moveend zoomend", renderLabels);
+renderLabels();
+loadAuto();
+</script>
+</body>
+</html>
