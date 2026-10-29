@@ -2,86 +2,104 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
 <title>Peta Selayar | Statistik Sosial Selayar</title>
 <link rel="icon" type="image/png" href="logo-bps.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="lib/fonts/fonts.css">
+<link rel="stylesheet" href="lib/leaflet/leaflet.css">
+<script>
+  // Jika salinan lokal Leaflet tidak ada (mis. di GitHub Pages), pakai CDN
+  (function () {
+    var l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
+    l.media = "print"; l.onload = function () { l.media = "all"; };
+    document.head.appendChild(l);
+  })();
+</script>
 <style>
   :root {
     color-scheme: dark;
-    --bg: #000000;
-    --panel: #0a0a0a;
-    --card: #121212;
-    --field: #000000;
-    --line: #262626;
-    --ink: #f2f2f2;
-    --muted: #8c8c8c;
+    --ink: #f4f4f5;
+    --muted: #a9a9b4;
+    --line: rgba(255,255,255,.13);
+    --glass: rgba(18,18,20,.58);
+    --card: rgba(255,255,255,.06);
+    --field: rgba(0,0,0,.35);
+    --hover: rgba(255,255,255,.12);
     --blue: #1a9bef;
-    --blue-soft: rgba(26,155,239,.14);
+    --blue-soft: rgba(26,155,239,.18);
     --orange: #f28c1f;
-    --orange-dark: #d9770f;
-    --green: #6cba33;
-    --danger: #ff7a6e;
+    --danger: #ff8a80;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--ink);
-    font-size: 14px;
-    display: flex;
-    flex-direction: column;
+    background: #000; color: var(--ink); font-size: 14px; overflow: hidden;
   }
 
-  /* ---------- Header ---------- */
-  .app-head {
-    flex: none;
-    margin: 10px 10px 0;
-    padding: 8px 18px;
-    background: var(--panel);
+  /* ---------- Peta layar penuh ---------- */
+  #map { position: fixed; inset: 0; background: #000; }
+
+  /* ---------- Kaca (glass) ---------- */
+  .glass {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
     border: 1px solid var(--line);
-    border-top: 3px solid var(--blue);
-    border-radius: 16px;
-    display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.07);
+    border-radius: 18px;
   }
-  .app-head img { height: 44px; width: auto; display: block; }
-  .titles { min-width: 0; }
-  .titles h1 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root { --glass: rgba(18,18,20,.92); }
+  }
+
+  /* ---------- Header mengambang ---------- */
+  .app-head {
+    position: fixed; z-index: 1100; top: 12px; left: 12px;
+    display: flex; align-items: center; gap: 11px; padding: 8px 10px 8px 14px;
+  }
+  .app-head img { height: 34px; width: auto; display: block; }
+  .titles h1 { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; }
   .titles h1 b { color: var(--blue); font-weight: 800; }
-  .titles p { margin: 1px 0 0; font-size: 13px; font-weight: 600; color: var(--orange); }
-  .stats { margin-left: auto; display: flex; gap: 10px; }
-  .pill {
-    background: var(--blue-soft); border-radius: 999px; padding: 6px 14px;
-    color: var(--muted); font-size: 12.5px; white-space: nowrap;
+  .titles p { margin: 2px 0 0; font-size: 12px; font-weight: 600; color: var(--orange); }
+  .icon-btn {
+    width: 34px; height: 34px; padding: 0; margin-left: 8px; flex: none;
+    display: grid; place-items: center; border-radius: 10px;
   }
-  .pill b { color: var(--blue); font-size: 18px; font-weight: 700; margin-right: 4px; }
-  .pill.o { background: rgba(242,140,31,.14); }
+  .icon-btn[aria-expanded="false"] { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+
+  .stats { position: fixed; z-index: 1100; top: 12px; right: 12px; display: flex; gap: 8px; }
+  .pill { padding: 7px 14px; border-radius: 999px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .pill b { color: var(--blue); font-size: 16px; font-weight: 700; margin-right: 4px; }
   .pill.o b { color: var(--orange); }
 
-  .app-body { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 10px; }
-
-  /* ---------- Panel samping ---------- */
+  /* ---------- Panel mengambang ---------- */
   #sidebar {
-    width: 330px; flex: none;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    transition: margin-left .2s ease;
+    position: fixed; z-index: 1100; top: 74px; left: 12px; width: 320px;
+    max-height: calc(100dvh - 86px);
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .22s ease, opacity .22s ease;
   }
-  #sidebar.hidden { margin-left: -340px; }
-  .sb-body { flex: 1; overflow-y: auto; padding: 16px; scrollbar-color: #3a3a3a transparent; }
+  #sidebar.hidden {
+    transform: translateX(calc(-100% - 24px)); opacity: 0; pointer-events: none; visibility: hidden;
+    transition: transform .22s ease, opacity .22s ease, visibility 0s linear .22s;
+  }
+  .sb-body {
+    flex: 1; overflow-y: auto; padding: 14px;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent;
+  }
 
-  h2 { font-size: 14px; margin: 22px 0 10px; font-weight: 700; }
+  h2 { font-size: 13px; margin: 18px 0 8px; font-weight: 700; }
   h2:first-child { margin-top: 0; }
 
-  label.field { display: block; margin-bottom: 12px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  label.field { display: block; margin-bottom: 10px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
   label.field > span { display: flex; justify-content: space-between; margin-bottom: 5px; }
   label.field > span b { color: var(--ink); }
   select {
@@ -94,24 +112,26 @@
   }
 
   button {
-    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 8px 14px;
-    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 7px 12px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.07); color: var(--ink);
   }
-  button:hover { background: #222222; }
-  button.primary { background: var(--orange); border-color: var(--orange); color: #1a1004; width: 100%; margin-top: 10px; }
-  button.primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+  button:hover { background: var(--hover); }
   button.danger { color: var(--danger); }
 
   .drop {
-    border: 1.5px dashed #3a3a3a; border-radius: 12px; padding: 14px 12px;
-    text-align: center; color: var(--muted); background: var(--field); cursor: pointer; font-size: 12.5px;
+    border: 1.5px dashed rgba(255,255,255,.28); border-radius: 12px; padding: 10px 12px;
+    text-align: center; color: var(--muted); background: rgba(0,0,0,.2); cursor: pointer; font-size: 12.5px;
   }
+  .drop:hover { background: rgba(255,255,255,.07); }
   .drop.over { border-color: var(--blue); background: var(--blue-soft); color: var(--ink); }
-  .drop strong { color: var(--ink); display: block; margin-bottom: 2px; font-size: 13px; }
+  .drop strong { color: var(--ink); font-weight: 600; }
 
   /* Kartu lapisan */
-  .layer { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 12px; }
+  .layer { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; }
   .layer.off { opacity: .6; }
+  .layer.off .layer-meta { margin-bottom: 0; }
+  .layer.off .filters, .layer.off label.field, .layer.off .layer-actions { display: none; }
+  .layer.off .layer-top { margin-bottom: 8px; }
   .layer-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .layer-top input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--blue); flex: none; }
   .layer-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -121,8 +141,7 @@
   }
   .layer-meta { font-size: 12px; color: var(--muted); margin: -4px 0 10px 24px; }
   .layer-actions { display: flex; gap: 6px; margin-top: 4px; }
-  .layer-actions button { flex: 1; font-size: 12.5px; padding: 6px; background: var(--panel); }
-  .layer-actions button:hover { background: #222222; }
+  .layer-actions button { flex: 1; font-size: 12.5px; padding: 6px; }
   .empty { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
 
   /* Filter wilayah */
@@ -137,7 +156,7 @@
     text-align: left; padding: 7px 10px; font-size: 12.5px; font-weight: 500;
     background: var(--field); border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
   }
-  .combo:hover { background: var(--field); border-color: #3a3a3a; }
+  .combo:hover { background: var(--field); border-color: rgba(255,255,255,.3); }
   .combo.empty .combo-text { color: var(--muted); }
   .combo.open { border-color: var(--blue); }
   .combo:disabled { opacity: .45; cursor: default; }
@@ -146,14 +165,21 @@
     content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px;
     border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
-  .hint { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+  .xbtn { padding: 0 9px; font-size: 16px; line-height: 1; color: var(--muted); }
+  .xbtn:disabled { opacity: .35; cursor: default; }
+  .factions { display: flex; gap: 14px; margin-top: 4px; }
+  .linkbtn { background: none; border: 0; padding: 4px 0; color: var(--blue); font-size: 12.5px; }
+  .linkbtn:hover { background: none; text-decoration: underline; }
+  .hint { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
   .hint b { color: var(--ink); font-weight: 600; }
 
   /* Daftar pilihan (pencarian + multi pilih) */
   #combo-pop {
     position: fixed; z-index: 3000; display: none; flex-direction: column;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,.7); overflow: hidden;
+    background: rgba(22,22,25,.9);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.6); overflow: hidden;
   }
   #combo-pop.show { display: flex; }
   .cp-search {
@@ -161,50 +187,58 @@
     background: var(--field); border: 1px solid var(--line); border-radius: 8px; width: calc(100% - 16px);
   }
   .cp-actions { display: flex; justify-content: space-between; padding: 0 12px; }
-  .cp-list { overflow-y: auto; padding: 4px 0; scrollbar-color: #3a3a3a transparent; }
+  .cp-list { overflow-y: auto; padding: 4px 0; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
   .cp-item { display: flex; align-items: center; gap: 9px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; }
-  .cp-item:hover { background: rgba(255,255,255,.06); }
+  .cp-item:hover { background: rgba(255,255,255,.08); }
   .cp-item input { width: 15px; height: 15px; accent-color: var(--blue); flex: none; margin: 0; }
   .cp-label { flex: 1; min-width: 0; word-break: break-word; }
   .cp-n { color: var(--muted); font-size: 12px; flex: none; }
   .cp-empty { padding: 14px 12px; color: var(--muted); font-size: 12.5px; }
   .cp-foot { padding: 7px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-  .xbtn { padding: 0 9px; font-size: 16px; line-height: 1; color: var(--muted); background: var(--panel); }
-  .xbtn:disabled { opacity: .35; cursor: default; }
-  .factions { display: flex; gap: 14px; margin-top: 4px; }
-  .linkbtn { background: none; border: 0; padding: 4px 0; color: var(--blue); font-size: 12.5px; }
-  .linkbtn:hover { background: none; text-decoration: underline; }
 
-  /* ---------- Peta ---------- */
-  #map-wrap {
-    flex: 1; position: relative; min-width: 0; overflow: hidden;
-    border: 1px solid var(--line); border-radius: 16px;
-  }
-  #map { position: absolute; inset: 0; background: #000000; }
-  #toggle {
-    position: absolute; top: 10px; left: 10px; z-index: 900;
-    box-shadow: 0 2px 8px rgba(0,0,0,.45); background: var(--panel);
-  }
+  /* Status, pemuatan, pesan */
   #status {
-    position: absolute; left: 10px; bottom: 24px; z-index: 900;
-    background: rgba(10,10,10,.92); border: 1px solid var(--line);
-    padding: 5px 11px; border-radius: 999px; font-size: 12px; color: var(--muted);
-    pointer-events: none;
+    position: fixed; z-index: 1100; bottom: 14px; left: 50%; transform: translateX(-50%);
+    padding: 5px 13px; border-radius: 999px; font-size: 12px; color: var(--muted);
+    pointer-events: none; white-space: nowrap;
   }
+  #loading {
+    position: fixed; z-index: 1100; top: 14px; left: 50%; transform: translateX(-50%);
+    display: none; align-items: center; gap: 9px; padding: 8px 16px; border-radius: 999px; font-size: 13px;
+  }
+  #loading.show { display: flex; }
+  #loading::before {
+    content: ""; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.25); border-top-color: var(--blue); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #toast {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1100;
-    background: var(--orange); color: #1a1004; padding: 9px 16px; border-radius: 12px;
-    max-width: 90%; display: none; font-size: 13px; font-weight: 600;
+    position: fixed; z-index: 3100; bottom: 54px; left: 50%; transform: translateX(-50%);
+    background: rgba(242,140,31,.92); color: #1a1004; padding: 9px 16px; border-radius: 12px;
+    max-width: min(90vw, 520px); display: none; font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
   }
 
-  /* Kontrol Leaflet bertema gelap */
-  .leaflet-bar { border: 1px solid var(--line) !important; box-shadow: 0 2px 8px rgba(0,0,0,.45) !important; }
-  .leaflet-bar a { background: var(--panel); color: var(--ink); border-bottom-color: var(--line); }
-  .leaflet-bar a:hover { background: var(--card); color: var(--ink); }
-  .leaflet-control-attribution { background: rgba(0,0,0,.85) !important; color: var(--muted) !important; }
-  .leaflet-control-attribution a { color: #6bb7ee !important; }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--ink); }
-  .leaflet-popup-content-wrapper { border: 1px solid var(--line); border-radius: 12px; }
+  /* Kontrol Leaflet bergaya kaca */
+  .leaflet-bar {
+    border: 1px solid var(--line) !important; border-radius: 14px !important; overflow: hidden;
+    background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
+  }
+  .leaflet-bar a { background: transparent; color: var(--ink); border-bottom-color: var(--line); }
+  .leaflet-bar a:hover { background: var(--hover); color: var(--ink); }
+  .leaflet-bottom.leaflet-right .leaflet-control-zoom { margin-right: 12px; margin-bottom: 8px; }
+  .leaflet-bottom.leaflet-right .leaflet-control-attribution {
+    margin: 0 12px 12px 0; padding: 2px 9px; border-radius: 8px;
+    background: rgba(18,18,20,.55) !important; color: #cfcfd8 !important;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .leaflet-control-attribution a { color: #7cc4f5 !important; }
+  .leaflet-popup-content-wrapper {
+    background: rgba(22,22,25,.82); color: var(--ink); border: 1px solid var(--line); border-radius: 14px;
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .leaflet-popup-tip { background: rgba(22,22,25,.9); }
   .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
 
   /* ---------- Label wilayah ---------- */
@@ -228,90 +262,100 @@
   .attr-table td:first-child { color: var(--muted); white-space: nowrap; }
   .leaflet-popup-content { max-height: 260px; overflow: auto; margin: 12px 14px; font-family: inherit; }
 
+  /* ---------- Layar kecil ---------- */
   @media (max-width: 760px) {
-    .app-head { padding: 8px 12px; }
-    .app-head img { height: 36px; }
-    .titles h1 { font-size: 18px; }
-    .stats { display: none; }
-    .app-body { flex-direction: column-reverse; }
-    #sidebar { width: 100%; height: 46vh; margin-left: 0 !important; }
-    #sidebar.hidden { display: none; }
+    .app-head { top: 8px; left: 8px; right: 8px; padding: 7px 8px 7px 12px; }
+    .app-head .icon-btn { margin-left: auto; }
+    .stats, .leaflet-control-zoom { display: none; }
+    #sidebar { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 52dvh; }
+    #sidebar.hidden { transform: translateY(calc(100% + 24px)); }
+    #status { top: 62px; bottom: auto; left: auto; right: 8px; transform: none; }
+    #loading { top: 62px; }
+    #toast { bottom: calc(52dvh + 16px); }
   }
 </style>
 </head>
 <body>
 
-<header class="app-head">
+<div id="map"></div>
+
+<header class="app-head glass">
   <img src="logo-bps.png" alt="Logo BPS">
   <div class="titles">
     <h1>Peta <b>Selayar</b></h1>
     <p>Statistik Sosial Selayar</p>
   </div>
-  <div class="stats">
-    <div class="pill"><b id="stat-layer">0</b>lapisan</div>
-    <div class="pill o"><b id="stat-fitur">0</b>wilayah tampil</div>
-  </div>
+  <button id="toggle" class="icon-btn" aria-expanded="true" aria-controls="sidebar" title="Sembunyikan panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+  </button>
 </header>
 
-<div class="app-body">
-  <aside id="sidebar">
-    <div class="sb-body">
-      <h2>Data wilayah</h2>
-      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Pilih file GeoJSON">
-        <strong>Seret file GeoJSON ke sini</strong>
-        Bisa lebih dari satu file (.geojson / .json)
-      </div>
-      <input type="file" id="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
-      <button class="primary" id="addbtn">Tambah file GeoJSON</button>
-
-      <div id="layers"></div>
-      <p class="empty" id="no-layer">Belum ada data. Tambahkan file GeoJSON hasil ekspor QGIS.</p>
-
-      <h2>Tampilan label</h2>
-      <label class="field">
-        <span>Tampilkan label mulai zoom <b id="v-minzoom">13</b></span>
-        <input type="range" id="minzoom" min="8" max="19" step="1" value="13">
-      </label>
-      <label class="field">
-        <span>Ukuran huruf <b><span id="v-fsize" style="display:inline">11</span> px</b></span>
-        <input type="range" id="fsize" min="8" max="20" step="1" value="11">
-      </label>
-
-      <h2>Peta dasar</h2>
-      <label class="field">
-        <select id="basemap">
-          <option value="sat">Citra satelit (Esri)</option>
-          <option value="esrihybrid">Satelit + jalan dan nama tempat (Esri)</option>
-          <option value="ghybrid">Google Hybrid</option>
-          <option value="osm">OpenStreetMap</option>
-          <option value="none">Tanpa peta dasar</option>
-        </select>
-      </label>
-
-      <h2>Interaksi peta</h2>
-      <p class="hint"><b>Klik</b> wilayah untuk menyorotnya. <b>Klik dua kali</b> atau <b>klik kanan</b> untuk melihat atributnya.</p>
-    </div>
-  </aside>
-
-  <main id="map-wrap">
-    <button id="toggle" aria-expanded="true">Sembunyikan panel</button>
-    <div id="map"></div>
-    <div id="status">Zoom -</div>
-    <div id="toast" role="status"></div>
-  </main>
+<div class="stats">
+  <div class="pill glass"><b id="stat-layer">0</b>lapisan</div>
+  <div class="pill glass o"><b id="stat-fitur">0</b>wilayah tampil</div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<aside id="sidebar" class="glass">
+  <div class="sb-body">
+    <h2>Data wilayah</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Tambah file GeoJSON">
+      <strong>+ Tambah file GeoJSON</strong> atau seret ke sini
+    </div>
+    <input type="file" id="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
+    <button id="addbtn" hidden>Tambah file GeoJSON</button>
+
+    <div id="layers"></div>
+    <p class="empty" id="no-layer">Belum ada data. Tambahkan file GeoJSON hasil ekspor QGIS.</p>
+
+    <h2>Tampilan peta</h2>
+    <label class="field">
+      <span>Peta dasar</span>
+      <select id="basemap">
+        <option value="sat">Citra satelit (Esri)</option>
+        <option value="esrihybrid">Satelit + jalan dan nama tempat (Esri)</option>
+        <option value="ghybrid">Google Hybrid</option>
+        <option value="osm">OpenStreetMap</option>
+        <option value="none">Tanpa peta dasar</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Label muncul mulai zoom <b id="v-minzoom">13</b></span>
+      <input type="range" id="minzoom" min="8" max="19" step="1" value="13">
+    </label>
+    <label class="field">
+      <span>Ukuran huruf label <b><span id="v-fsize">11</span> px</b></span>
+      <input type="range" id="fsize" min="8" max="20" step="1" value="11">
+    </label>
+
+    <p class="hint"><b>Klik</b> wilayah untuk menyorotnya. <b>Klik dua kali</b> atau <b>klik kanan</b> untuk melihat atributnya.</p>
+  </div>
+</aside>
+
+<div id="status" class="glass">Zoom -</div>
+<div id="loading" class="glass" role="status">Memuat data wilayah...</div>
+<div id="toast" role="status"></div>
+
+<script src="lib/leaflet/leaflet.js"></script>
+<script>window.L || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"><\/script>');</script>
 <script>
 /* =====================================================================
    PENGATURAN
-   Jika web ini di-host (bukan dibuka langsung dari file), file GeoJSON
-   bisa dimuat otomatis. Taruh file di folder "data" lalu isi daftar ini.
-   Contoh:
+   Data wilayah dimuat otomatis saat halaman dibuka, dengan urutan:
+   1. Mode lokal   : server.py (jalankan.bat) membaca semua file di folder "data".
+   2. data/daftar.json (opsional): daftar file, mis. ["sls_selayar.geojson"].
+   3. Daftar AUTO_LAYERS di bawah (isi bila ingin menentukan sendiri).
+   4. GitHub Pages : isi folder "data" di repository dibaca otomatis,
+                     jadi cukup taruh file .geojson di folder "data".
+   Contoh AUTO_LAYERS:
      { name: "SLS Selayar", url: "data/sls_selayar.geojson" }
    ===================================================================== */
+// visible: false = lapisan dimuat tetapi dimatikan dulu (centang di panel untuk menampilkan)
 const AUTO_LAYERS = [
-  // { name: "SLS Selayar", url: "data/sls_selayar.geojson" },
+  { name: "Kabupaten",      url: "peta_kab_202517301.geojson",  color: "#ffffff", visible: false },
+  { name: "Kecamatan",      url: "peta_kec_202517301.geojson",  color: "#ffd400", visible: false },
+  { name: "Desa/Kelurahan", url: "peta_desa_202517301.geojson", color: "#2aa7f5", visible: false },
+  { name: "Blok Sensus",    url: "peta_bs_202517301.geojson",   color: "#6cba33", visible: false },
+  { name: "SLS",            url: "peta_sls_202517301.geojson",  color: "#ff3b30", visible: true  },
 ];
 
 // Atribut yang dicoba dipilih otomatis sebagai label (urutan prioritas)
@@ -327,6 +371,10 @@ const FILTER_GUESS = [
 // Warna awal tiap lapisan
 const PALETTE = ["#f28c1f", "#1a9bef", "#6cba33", "#ffd400", "#e41a1c", "#c05bff"];
 
+// Peta offline dari folder "tiles" (hasil QGIS: Generate XYZ tiles). Isi true bila citranya gelap/satelit
+// sehingga label berwarna putih, false bila peta terang sehingga label berwarna gelap.
+const TILES_LOKAL_GELAP = true;
+
 // Batas jumlah label yang digambar sekaligus (menjaga peta tetap lancar)
 const MAX_LABELS = 1500;
 
@@ -335,8 +383,9 @@ const W_BASE = 1.6, W_HOVER = 2.4, W_SELECTED = 3.6;
 
 /* ===================================================================== */
 
-const map = L.map("map", { preferCanvas: true, zoomControl: true, maxZoom: 22 })
+const map = L.map("map", { preferCanvas: true, zoomControl: false, maxZoom: 22 })
   .setView([-6.12, 120.46], 10);
+L.control.zoom({ position: "bottomright", zoomInTitle: "Perbesar", zoomOutTitle: "Perkecil" }).addTo(map);
 
 const bases = {
   sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -575,7 +624,7 @@ function normalize(json) {
   throw new Error("Format GeoJSON tidak dikenali.");
 }
 
-function addDataset(name, json) {
+function addDataset(name, json, opts = {}) {
   const features = normalize(json).filter((f) => f && f.geometry);
   if (!features.length) throw new Error("Tidak ada fitur bergeometri di file ini.");
 
@@ -594,9 +643,9 @@ function addDataset(name, json) {
   const id = nextId++;
   const L_ = {
     id, name, features, fields,
-    color: PALETTE[(id - 1) % PALETTE.length],
+    color: opts.color || PALETTE[(id - 1) % PALETTE.length],
     fillOpacity: 0,
-    visible: true,
+    visible: opts.visible !== false,
     labelA: guessField || "",
     labelB: "",
     geo: null,
@@ -610,7 +659,7 @@ function addDataset(name, json) {
   buildGeo(L_);
   renderPanel();
   renderLabels();
-  zoomTo(L_);
+  if (L_.visible) zoomTo(L_);
 }
 
 async function readFiles(fileList) {
@@ -624,16 +673,103 @@ async function readFiles(fileList) {
   }
 }
 
-async function loadAuto() {
-  for (const item of AUTO_LAYERS) {
-    try {
-      const r = await fetch(item.url);
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      addDataset(item.name, await r.json());
-    } catch (e) {
-      toast(`Gagal memuat ${item.url}. Pastikan web dibuka lewat server, bukan langsung dari file.`);
+let loadDone = false;
+
+function normList(arr) {
+  return arr.map((x) => (typeof x === "string"
+    ? { name: x.replace(/\.(geo)?json$/i, ""), url: "data/" + x }
+    : x));
+}
+
+// Membaca isi folder "data" di repository lewat GitHub API (khusus GitHub Pages)
+async function listFromGithub() {
+  const host = location.hostname;
+  if (!host.endsWith(".github.io")) return [];
+  const owner = host.split(".")[0];
+  const seg = location.pathname.split("/").filter(Boolean)[0];
+  const repo = !seg || /\.html?$/i.test(seg) ? host : seg;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/data`);
+    if (!r.ok) return [];
+    const items = await r.json();
+    return items
+      .filter((x) => x.type === "file" && /\.(geo)?json$/i.test(x.name) && x.name.toLowerCase() !== "daftar.json" && !/^[._]/.test(x.name))
+      .map((x) => ({ name: x.name.replace(/\.(geo)?json$/i, ""), url: "data/" + x.name }));
+  } catch (e) { return []; }
+}
+
+async function discoverList() {
+  // 1. server lokal (jalankan.bat)
+  try {
+    const r = await fetch("api/info", { cache: "no-store" });
+    if (r.ok) {
+      const info = await r.json();
+      if (info.tiles) addLocalTiles(info.tiles);
+      return { list: info.layers || [], local: true };
     }
+  } catch (e) { /* bukan mode lokal */ }
+  // 2. data/daftar.json (opsional)
+  try {
+    const r = await fetch("data/daftar.json", { cache: "no-cache" });
+    if (r.ok) {
+      const arr = await r.json();
+      if (Array.isArray(arr) && arr.length) return { list: normList(arr) };
+    }
+  } catch (e) { /* tidak ada */ }
+  // 3. AUTO_LAYERS
+  if (AUTO_LAYERS.length) return { list: AUTO_LAYERS };
+  // 4. GitHub Pages: baca folder data
+  return { list: await listFromGithub() };
+}
+
+async function loadAuto() {
+  if (location.protocol === "file:") {
+    loadDone = true; renderPanel();
+    toast("Dibuka langsung dari file, data tidak bisa dimuat otomatis. Pakai jalankan.bat atau tambah file manual.");
+    return;
   }
+  $("loading").classList.add("show");
+  try {
+    const { list, local } = await discoverList();
+    if (!list.length) {
+      toast(local
+        ? 'Folder "data" masih kosong. Salin file GeoJSON ke sana lalu muat ulang halaman.'
+        : 'Belum ada file GeoJSON di folder "data". Taruh file di sana atau tambahkan manual.');
+    }
+    const results = await Promise.all(list.map(async (item) => {
+      try {
+        const r = await fetch(item.url, { cache: "no-cache" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return { item, json: await r.json() };
+      } catch (e) {
+        toast(`Gagal memuat ${item.url}.`);
+        return null;
+      }
+    }));
+    for (const res of results) {
+      if (!res) continue;
+      try { addDataset(res.item.name, res.json, res.item); }
+      catch (e) { toast(`${res.item.name}: ${e.message}`); }
+    }
+    fitAll();
+  } finally {
+    loadDone = true;
+    $("loading").classList.remove("show");
+    renderPanel();
+  }
+}
+
+// Menambahkan pilihan peta dasar offline bila folder "tiles" tersedia
+function addLocalTiles(t) {
+  bases.lokal = L.tileLayer("tiles/{z}/{x}/{y}.png", {
+    minZoom: t.min, maxZoom: 22, maxNativeZoom: t.max, attribution: "Peta offline",
+  });
+  if (TILES_LOKAL_GELAP) DARK_BASES.push("lokal");
+  const sel = $("basemap");
+  const opt = new Option("Peta offline (tiles lokal)", "lokal");
+  sel.insertBefore(opt, sel.firstChild);
+  sel.value = "lokal";
+  setBase("lokal");
 }
 
 /* ---------- Label ---------- */
@@ -687,10 +823,28 @@ function renderLabels() {
 }
 
 /* ---------- Panel lapisan ---------- */
+// Opsi zoom yang menyisakan ruang untuk header dan panel mengambang
+function fitOpts() {
+  const panelOpen = !$("sidebar").classList.contains("hidden") && window.innerWidth > 760;
+  return panelOpen
+    ? { paddingTopLeft: [352, 84], paddingBottomRight: [50, 50] }
+    : { paddingTopLeft: [40, 84], paddingBottomRight: [50, 50] };
+}
+
+function fitAll() {
+  let b = null;
+  layers.forEach((l) => {
+    if (!l.geo || !l.visible) return;
+    const lb = l.geo.getBounds();
+    if (lb.isValid()) b = b ? b.extend(lb) : L.latLngBounds(lb.getSouthWest(), lb.getNorthEast());
+  });
+  if (b) map.fitBounds(b, fitOpts());
+}
+
 function zoomTo(L_) {
   if (!L_.geo) return;
   const b = L_.geo.getBounds();
-  if (b.isValid()) map.fitBounds(b, { padding: [30, 30] });
+  if (b.isValid()) map.fitBounds(b, fitOpts());
 }
 
 function fieldOptions(L_, selectedField, noneLabel) {
@@ -700,7 +854,7 @@ function fieldOptions(L_, selectedField, noneLabel) {
 
 function updateStats() {
   $("stat-layer").textContent = layers.length.toLocaleString("id-ID");
-  $("stat-fitur").textContent = layers.reduce((n, l) => n + l.passCount, 0).toLocaleString("id-ID");
+  $("stat-fitur").textContent = layers.reduce((n, l) => n + (l.visible ? l.passCount : 0), 0).toLocaleString("id-ID");
 }
 
 function comboSummary(flt) {
@@ -864,7 +1018,7 @@ function renderPanel() {
   updateStats();
   const host = $("layers");
   host.innerHTML = "";
-  $("no-layer").style.display = layers.length ? "none" : "block";
+  $("no-layer").style.display = layers.length || !loadDone ? "none" : "block";
 
   layers.forEach((L_) => {
     const div = document.createElement("div");
@@ -913,6 +1067,7 @@ function renderPanel() {
       L_.visible = chk.checked;
       div.classList.toggle("off", !L_.visible);
       if (L_.visible) L_.geo.addTo(map); else map.removeLayer(L_.geo);
+      updateStats();
       renderLabels();
     };
     color.oninput = () => { L_.color = color.value; restyle(L_); };
@@ -950,9 +1105,9 @@ $("toggle").onclick = () => {
   const sb = $("sidebar");
   const hide = !sb.classList.contains("hidden");
   sb.classList.toggle("hidden", hide);
-  $("toggle").textContent = hide ? "Tampilkan panel" : "Sembunyikan panel";
   $("toggle").setAttribute("aria-expanded", String(!hide));
-  setTimeout(() => map.invalidateSize(), 250);
+  $("toggle").title = hide ? "Tampilkan panel" : "Sembunyikan panel";
+  closePop();
 };
 
 map.on("moveend zoomend", renderLabels);
