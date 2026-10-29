@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>Peta Selayar | Statistik Sosial Selayar</title>
+<link rel="icon" type="image/png" href="logo-bps.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/fonts/fonts.css">
+<link rel="stylesheet" href="lib/leaflet/leaflet.css">
+<script>
+  // Jika salinan lokal Leaflet tidak ada (mis. di GitHub Pages), pakai CDN
+  (function () {
+    var l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
+    l.media = "print"; l.onload = function () { l.media = "all"; };
+    document.head.appendChild(l);
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #f4f4f5;
+    --muted: #a9a9b4;
+    --line: rgba(255,255,255,.13);
+    --glass: rgba(18,18,20,.58);
+    --card: rgba(255,255,255,.06);
+    --field: rgba(0,0,0,.35);
+    --hover: rgba(255,255,255,.12);
+    --blue: #1a9bef;
+    --blue-soft: rgba(26,155,239,.18);
+    --orange: #f28c1f;
+    --danger: #ff8a80;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #000; color: var(--ink); font-size: 14px; overflow: hidden;
+  }
+
+  /* ---------- Peta layar penuh ---------- */
+  #map { position: fixed; inset: 0; background: #000; }
+
+  /* ---------- Kaca (glass) ---------- */
+  .glass {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.07);
+    border-radius: 18px;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root { --glass: rgba(18,18,20,.92); }
+  }
+
+  /* ---------- Header mengambang ---------- */
+  .app-head {
+    position: fixed; z-index: 1100; top: 12px; left: 12px;
+    display: flex; align-items: center; gap: 11px; padding: 8px 10px 8px 14px;
+  }
+  .app-head img { height: 34px; width: auto; display: block; }
+  .titles h1 { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; }
+  .titles h1 b { color: var(--blue); font-weight: 800; }
+  .titles p { margin: 2px 0 0; font-size: 12px; font-weight: 600; color: var(--orange); }
+  .icon-btn {
+    width: 34px; height: 34px; padding: 0; margin-left: 8px; flex: none;
+    display: grid; place-items: center; border-radius: 10px;
+  }
+  .icon-btn[aria-expanded="false"] { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+
+  .stats { position: fixed; z-index: 1100; top: 12px; right: 12px; display: flex; gap: 8px; }
+  .pill { padding: 7px 14px; border-radius: 999px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .pill b { color: var(--blue); font-size: 16px; font-weight: 700; margin-right: 4px; }
+  .pill.o b { color: var(--orange); }
+
+  /* ---------- Panel mengambang ---------- */
+  #sidebar {
+    position: fixed; z-index: 1100; top: 74px; left: 12px; width: 320px;
+    max-height: calc(100dvh - 86px);
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  #sidebar.hidden {
+    transform: translateX(calc(-100% - 24px)); opacity: 0; pointer-events: none; visibility: hidden;
+    transition: transform .22s ease, opacity .22s ease, visibility 0s linear .22s;
+  }
+  .sb-body {
+    flex: 1; overflow-y: auto; padding: 14px;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent;
+  }
+
+  h2 { font-size: 13px; margin: 18px 0 8px; font-weight: 700; }
+  h2:first-child { margin-top: 0; }
+
+  label.field { display: block; margin-bottom: 10px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  label.field > span { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  label.field > span b { color: var(--ink); }
+  select {
+    width: 100%; padding: 8px 10px; font: inherit; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; background: var(--field);
+  }
+  input[type=range] { width: 100%; accent-color: var(--orange); }
+  select:focus-visible, input:focus-visible, button:focus-visible, .drop:focus-visible {
+    outline: 2px solid var(--blue); outline-offset: 2px;
+  }
+
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 7px 12px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.07); color: var(--ink);
+  }
+  button:hover { background: var(--hover); }
+  button.danger { color: var(--danger); }
+
+  .drop {
+    border: 1.5px dashed rgba(255,255,255,.28); border-radius: 12px; padding: 10px 12px;
+    text-align: center; color: var(--muted); background: rgba(0,0,0,.2); cursor: pointer; font-size: 12.5px;
+  }
+  .drop:hover { background: rgba(255,255,255,.07); }
+  .drop.over { border-color: var(--blue); background: var(--blue-soft); color: var(--ink); }
+  .drop strong { color: var(--ink); font-weight: 600; }
+
+  /* Kartu lapisan */
+  .layer { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; }
+  .layer.off { opacity: .6; }
+  .layer.off .layer-meta { margin-bottom: 0; }
+  .layer.off .filters, .layer.off label.field, .layer.off .layer-actions { display: none; }
+  .layer.off .layer-top { margin-bottom: 8px; }
+  .layer-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .layer-top input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--blue); flex: none; }
+  .layer-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .layer-top input[type=color] {
+    width: 28px; height: 28px; padding: 0; border: 1px solid var(--line);
+    border-radius: 8px; background: none; cursor: pointer; flex: none;
+  }
+  .layer-meta { font-size: 12px; color: var(--muted); margin: -4px 0 10px 24px; }
+  .layer-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .layer-actions button { flex: 1; font-size: 12.5px; padding: 6px; }
+  .empty { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+
+  /* Filter wilayah */
+  .filters { margin: 2px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .fhead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 12.5px; margin-bottom: 8px; }
+  .fcount { font-weight: 600; color: var(--orange); font-size: 12px; }
+  .frow { margin-bottom: 10px; }
+  .frow-top { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 5px; }
+  .frow select { padding: 7px 8px; font-size: 12.5px; min-width: 0; }
+  .combo {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    text-align: left; padding: 7px 10px; font-size: 12.5px; font-weight: 500;
+    background: var(--field); border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
+  }
+  .combo:hover { background: var(--field); border-color: rgba(255,255,255,.3); }
+  .combo.empty .combo-text { color: var(--muted); }
+  .combo.open { border-color: var(--blue); }
+  .combo:disabled { opacity: .45; cursor: default; }
+  .combo-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .combo::after {
+    content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px;
+    border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .xbtn { padding: 0 9px; font-size: 16px; line-height: 1; color: var(--muted); }
+  .xbtn:disabled { opacity: .35; cursor: default; }
+  .factions { display: flex; gap: 14px; margin-top: 4px; }
+  .linkbtn { background: none; border: 0; padding: 4px 0; color: var(--blue); font-size: 12.5px; }
+  .linkbtn:hover { background: none; text-decoration: underline; }
+  .hint { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .hint b { color: var(--ink); font-weight: 600; }
+
+  /* Daftar pilihan (pencarian + multi pilih) */
+  #combo-pop {
+    position: fixed; z-index: 3000; display: none; flex-direction: column;
+    background: rgba(22,22,25,.9);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.6); overflow: hidden;
+  }
+  #combo-pop.show { display: flex; }
+  .cp-search {
+    margin: 8px 8px 4px; padding: 8px 10px; font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px; width: calc(100% - 16px);
+  }
+  .cp-actions { display: flex; justify-content: space-between; padding: 0 12px; }
+  .cp-list { overflow-y: auto; padding: 4px 0; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+  .cp-item { display: flex; align-items: center; gap: 9px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; }
+  .cp-item:hover { background: rgba(255,255,255,.08); }
+  .cp-item input { width: 15px; height: 15px; accent-color: var(--blue); flex: none; margin: 0; }
+  .cp-label { flex: 1; min-width: 0; word-break: break-word; }
+  .cp-n { color: var(--muted); font-size: 12px; flex: none; }
+  .cp-empty { padding: 14px 12px; color: var(--muted); font-size: 12.5px; }
+  .cp-foot { padding: 7px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+  /* Status, pemuatan, pesan */
+  #status {
+    position: fixed; z-index: 1100; bottom: 14px; left: 50%; transform: translateX(-50%);
+    padding: 5px 13px; border-radius: 999px; font-size: 12px; color: var(--muted);
+    pointer-events: none; white-space: nowrap;
+  }
+  #loading {
+    position: fixed; z-index: 1100; top: 14px; left: 50%; transform: translateX(-50%);
+    display: none; align-items: center; gap: 9px; padding: 8px 16px; border-radius: 999px; font-size: 13px;
+  }
+  #loading.show { display: flex; }
+  #loading::before {
+    content: ""; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.25); border-top-color: var(--blue); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #toast {
+    position: fixed; z-index: 3100; bottom: 54px; left: 50%; transform: translateX(-50%);
+    background: rgba(242,140,31,.92); color: #1a1004; padding: 9px 16px; border-radius: 12px;
+    max-width: min(90vw, 520px); display: none; font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  }
+
+  /* Kontrol Leaflet bergaya kaca */
+  .leaflet-bar {
+    border: 1px solid var(--line) !important; border-radius: 14px !important; overflow: hidden;
+    background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
+  }
+  .leaflet-bar a { background: transparent; color: var(--ink); border-bottom-color: var(--line); }
+  .leaflet-bar a:hover { background: var(--hover); color: var(--ink); }
+  .leaflet-bottom.leaflet-right .leaflet-control-zoom { margin-right: 12px; margin-bottom: 8px; }
+  .leaflet-bottom.leaflet-right .leaflet-control-attribution {
+    margin: 0 12px 12px 0; padding: 2px 9px; border-radius: 8px;
+    background: rgba(18,18,20,.55) !important; color: #cfcfd8 !important;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .leaflet-control-attribution a { color: #7cc4f5 !important; }
+  .leaflet-popup-content-wrapper {
+    background: rgba(22,22,25,.82); color: var(--ink); border: 1px solid var(--line); border-radius: 14px;
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  }
+  .leaflet-popup-tip { background: rgba(22,22,25,.9); }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+
+  /* ---------- Label wilayah ---------- */
+  .lbl { background: none; border: 0; }
+  .lbl span {
+    position: absolute; transform: translate(-50%, -50%);
+    white-space: nowrap; font-weight: 700; line-height: 1.15;
+    text-align: center; pointer-events: none;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    color: #fff;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000;
+  }
+  body.light-base .lbl span {
+    color: #14232b;
+    text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px #fff;
+  }
+
+  /* Popup atribut */
+  .attr-table { border-collapse: collapse; font-size: 12.5px; }
+  .attr-table td { padding: 3px 10px 3px 0; vertical-align: top; }
+  .attr-table td:first-child { color: var(--muted); white-space: nowrap; }
+  .leaflet-popup-content { max-height: 260px; overflow: auto; margin: 12px 14px; font-family: inherit; }
+
+  /* ---------- Layar kecil ---------- */
+  @media (max-width: 760px) {
+    .app-head { top: 8px; left: 8px; right: 8px; padding: 7px 8px 7px 12px; }
+    .app-head .icon-btn { margin-left: auto; }
+    .stats, .leaflet-control-zoom { display: none; }
+    #sidebar { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 52dvh; }
+    #sidebar.hidden { transform: translateY(calc(100% + 24px)); }
+    #status { top: 62px; bottom: auto; left: auto; right: 8px; transform: none; }
+    #loading { top: 62px; }
+    #toast { bottom: calc(52dvh + 16px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<header class="app-head glass">
+  <img src="logo-bps.png" alt="Logo BPS">
+  <div class="titles">
+    <h1>Peta <b>Selayar</b></h1>
+    <p>Statistik Sosial Selayar</p>
+  </div>
+  <button id="toggle" class="icon-btn" aria-expanded="true" aria-controls="sidebar" title="Sembunyikan panel">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+  </button>
+</header>
+
+<div class="stats">
+  <div class="pill glass"><b id="stat-layer">0</b>lapisan</div>
+  <div class="pill glass o"><b id="stat-fitur">0</b>wilayah tampil</div>
+</div>
+
+<aside id="sidebar" class="glass">
+  <div class="sb-body">
+    <h2>Data wilayah</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Tambah file GeoJSON">
+      <strong>+ Tambah file GeoJSON</strong> atau seret ke sini
+    </div>
+    <input type="file" id="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
+    <button id="addbtn" hidden>Tambah file GeoJSON</button>
+
+    <div id="layers"></div>
+    <p class="empty" id="no-layer">Belum ada data. Tambahkan file GeoJSON hasil ekspor QGIS.</p>
+
+    <h2>Tampilan peta</h2>
+    <label class="field">
+      <span>Peta dasar</span>
+      <select id="basemap">
+        <option value="sat">Citra satelit (Esri)</option>
+        <option value="esrihybrid">Satelit + jalan dan nama tempat (Esri)</option>
+        <option value="ghybrid">Google Hybrid</option>
+        <option value="osm">OpenStreetMap</option>
+        <option value="none">Tanpa peta dasar</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Label muncul mulai zoom <b id="v-minzoom">13</b></span>
+      <input type="range" id="minzoom" min="8" max="19" step="1" value="13">
+    </label>
+    <label class="field">
+      <span>Ukuran huruf label <b><span id="v-fsize">11</span> px</b></span>
+      <input type="range" id="fsize" min="8" max="20" step="1" value="11">
+    </label>
+
+    <p class="hint"><b>Klik</b> wilayah untuk menyorotnya. <b>Klik dua kali</b> atau <b>klik kanan</b> untuk melihat atributnya.</p>
+  </div>
+</aside>
+
+<div id="status" class="glass">Zoom -</div>
+<div id="loading" class="glass" role="status">Memuat data wilayah...</div>
+<div id="toast" role="status"></div>
+
+<script src="lib/leaflet/leaflet.js"></script>
+<script>window.L || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"><\/script>');</script>
+<script>
+/* =====================================================================
+   PENGATURAN
+   Data wilayah dimuat otomatis saat halaman dibuka, dengan urutan:
+   1. Mode lokal   : server.py (jalankan.bat) membaca semua file di folder "data".
+   2. data/daftar.json (opsional): daftar file, mis. ["sls_selayar.geojson"].
+   3. Daftar AUTO_LAYERS di bawah (isi bila ingin menentukan sendiri).
+   4. GitHub Pages : isi folder "data" di repository dibaca otomatis,
+                     jadi cukup taruh file .geojson di folder "data".
+   Contoh AUTO_LAYERS:
+     { name: "SLS Selayar", url: "data/sls_selayar.geojson" }
+   ===================================================================== */
+// visible: false = lapisan dimuat tetapi dimatikan dulu (centang di panel untuk menampilkan)
+const AUTO_LAYERS = [
+  { name: "Kabupaten",      url: "peta_kab_202517301.geojson",  color: "#ffffff", visible: false },
+  { name: "Kecamatan",      url: "peta_kec_202517301.geojson",  color: "#ffd400", visible: false },
+  { name: "Desa/Kelurahan", url: "peta_desa_202517301.geojson", color: "#2aa7f5", visible: false },
+  { name: "Blok Sensus",    url: "peta_bs_202517301.geojson",   color: "#6cba33", visible: false },
+  { name: "SLS",            url: "peta_sls_202517301.geojson",  color: "#ff3b30", visible: true  },
+];
+
+// Atribut yang dicoba dipilih otomatis sebagai label (urutan prioritas)
+const LABEL_GUESS = ["nmsls", "nama_sls", "sls", "nama", "name", "label", "nmdesa", "nmkel", "nmkec"];
+
+// Atribut yang dicoba dipasang otomatis sebagai baris filter (kecamatan, desa, SLS)
+const FILTER_GUESS = [
+  ["nmkec", "nama_kec", "nm_kec", "kecamatan", "kec"],
+  ["nmdesa", "nmkel", "nmdesakel", "nama_desa", "nm_desa", "nm_kel", "desa", "kelurahan"],
+  ["nmsls", "nama_sls", "sls"],
+];
+
+// Warna awal tiap lapisan
+const PALETTE = ["#f28c1f", "#1a9bef", "#6cba33", "#ffd400", "#e41a1c", "#c05bff"];
+
+// Peta offline dari folder "tiles" (hasil QGIS: Generate XYZ tiles). Isi true bila citranya gelap/satelit
+// sehingga label berwarna putih, false bila peta terang sehingga label berwarna gelap.
+const TILES_LOKAL_GELAP = true;
+
+// Batas jumlah label yang digambar sekaligus (menjaga peta tetap lancar)
+const MAX_LABELS = 1500;
+
+// Ketebalan garis: normal, saat kursor di atas wilayah, dan saat wilayah dipilih (diklik)
+const W_BASE = 1.6, W_HOVER = 2.4, W_SELECTED = 3.6;
+
+/* ===================================================================== */
+
+const map = L.map("map", { preferCanvas: true, zoomControl: false, maxZoom: 22 })
+  .setView([-6.12, 120.46], 10);
+L.control.zoom({ position: "bottomright", zoomInTitle: "Perbesar", zoomOutTitle: "Perkecil" }).addTo(map);
+
+const bases = {
+  sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "Citra &copy; Esri, Maxar, Earthstar Geographics" }),
+  osm: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "&copy; kontributor OpenStreetMap" }),
+  // Satelit Esri ditambah nama tempat dan jalan (alternatif hybrid yang resmi)
+  esrihybrid: L.layerGroup([
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19, attribution: "Citra &copy; Esri, Maxar, Earthstar Geographics" }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19 }),
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 22, maxNativeZoom: 19 }),
+  ]),
+  // Google Hybrid (satelit + jalan + nama tempat). Lihat catatan ketentuan layanan Google.
+  ghybrid: L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+        { subdomains: ["0", "1", "2", "3"], maxZoom: 22, maxNativeZoom: 20, attribution: "&copy; Google" }),
+};
+const DARK_BASES = ["sat", "esrihybrid", "ghybrid"];
+let currentBase = null;
+function setBase(key) {
+  if (currentBase) map.removeLayer(currentBase);
+  currentBase = bases[key] || null;
+  if (currentBase) currentBase.addTo(map);
+  document.body.classList.toggle("light-base", !DARK_BASES.includes(key));
+}
+setBase("sat");
+
+const labelGroup = L.layerGroup().addTo(map);
+const layers = [];   // semua lapisan data
+let nextId = 1;
+let selected = null; // poligon yang sedang di-highlight
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- Pesan singkat ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), 6000);
+}
+
+/* ---------- Geometri: titik letak label ---------- */
+function ringCentroid(ring) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x0, y0] = ring[j], [x1, y1] = ring[i];
+    const f = x0 * y1 - x1 * y0;
+    a += f; cx += (x0 + x1) * f; cy += (y0 + y1) * f;
+  }
+  a /= 2;
+  if (Math.abs(a) < 1e-14) return { area: 0, pt: ring[0] };
+  return { area: Math.abs(a), pt: [cx / (6 * a), cy / (6 * a)] };
+}
+
+function labelPoint(geom) {
+  if (!geom) return null;
+  const t = geom.type, c = geom.coordinates;
+  if (t === "Point") return [c[1], c[0]];
+  if (t === "MultiPoint") return c.length ? [c[0][1], c[0][0]] : null;
+  if (t === "LineString" || t === "MultiLineString") {
+    const line = t === "LineString" ? c : c.reduce((m, l) => (l.length > m.length ? l : m), []);
+    const p = line[Math.floor(line.length / 2)];
+    return p ? [p[1], p[0]] : null;
+  }
+  if (t === "Polygon" || t === "MultiPolygon") {
+    const polys = t === "Polygon" ? [c] : c;
+    let best = null;
+    for (const poly of polys) {
+      if (!poly[0] || poly[0].length < 3) continue;
+      const r = ringCentroid(poly[0]);
+      if (!best || r.area > best.area) best = r;
+    }
+    return best ? [best.pt[1], best.pt[0]] : null;
+  }
+  if (t === "GeometryCollection") {
+    for (const g of geom.geometries) { const p = labelPoint(g); if (p) return p; }
+  }
+  return null;
+}
+
+function firstCoord(geom) {
+  let c = geom && geom.coordinates;
+  while (Array.isArray(c) && Array.isArray(c[0])) c = c[0];
+  return c;
+}
+
+/* ---------- Gaya poligon dan highlight ---------- */
+function styleFor(lyr, state) {
+  const L_ = lyr._L;
+  const isPt = lyr instanceof L.CircleMarker;
+  const sel = state === "selected", hov = state === "hover";
+  return {
+    color: L_.color,
+    weight: sel ? W_SELECTED : hov ? W_HOVER : W_BASE,
+    opacity: 1,
+    fillColor: L_.color,
+    fillOpacity: isPt ? 0.7 : (sel ? Math.max(L_.fillOpacity, 0.2) : L_.fillOpacity),
+    ...(isPt ? { radius: sel ? 7 : 5 } : {}),
+  };
+}
+
+function restyle(L_) {
+  if (!L_.geo) return;
+  L_.geo.eachLayer((l) => l.setStyle && l.setStyle(styleFor(l, selected === l ? "selected" : "base")));
+}
+
+function deselect() {
+  if (!selected) return;
+  const l = selected;
+  selected = null;
+  if (l.setStyle) l.setStyle(styleFor(l, "base"));
+}
+
+function select(lyr) {
+  if (selected && selected !== lyr) deselect();
+  selected = lyr;
+  if (lyr.setStyle) lyr.setStyle(styleFor(lyr, "selected"));
+  if (lyr.bringToFront) lyr.bringToFront();
+}
+
+// Klik di area kosong peta melepas sorotan
+map.on("click", deselect);
+
+/* ---------- Popup atribut (klik dua kali atau klik kanan) ---------- */
+function showAttributes(f, latlng) {
+  const rows = Object.entries(f.properties || {})
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v ?? "")}</td></tr>`).join("");
+  L.popup({ maxWidth: 360 })
+    .setLatLng(latlng)
+    .setContent(`<table class="attr-table">${rows || "<tr><td>Tidak ada atribut</td></tr>"}</table>`)
+    .openOn(map);
+}
+
+/* ---------- Membangun lapisan peta (hanya fitur yang lolos filter) ---------- */
+function buildGeo(L_) {
+  if (L_.geo) map.removeLayer(L_.geo);
+  if (selected && selected._L === L_) selected = null;
+
+  const feats = L_.features.filter((f, i) => L_.pass[i]);
+  L_.geo = L.geoJSON({ type: "FeatureCollection", features: feats }, {
+    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5 }),
+    onEachFeature: (f, lyr) => {
+      lyr._L = L_;
+      lyr.on("click", (e) => { L.DomEvent.stopPropagation(e); select(lyr); });
+      lyr.on("dblclick", (e) => { L.DomEvent.stopPropagation(e); select(lyr); showAttributes(f, e.latlng); });
+      lyr.on("contextmenu", (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (e.originalEvent) e.originalEvent.preventDefault();
+        select(lyr);
+        showAttributes(f, e.latlng);
+      });
+      lyr.on("mouseover", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "hover")); });
+      lyr.on("mouseout", () => { if (selected !== lyr && lyr.setStyle) lyr.setStyle(styleFor(lyr, "base")); });
+    },
+  });
+  restyle(L_);
+  if (L_.visible) L_.geo.addTo(map);
+}
+
+/* ---------- Filter wilayah ---------- */
+const norm = (v) => (v === null || v === undefined ? "" : String(v).trim());
+
+// Filter yang aktif = sudah punya atribut dan minimal satu nilai terpilih
+function activeFilters(L_, upTo) {
+  return L_.filters.slice(0, upTo === undefined ? L_.filters.length : upTo)
+    .filter((f) => f.field && f.values.length)
+    .map((f) => ({ field: f.field, set: new Set(f.values) }));
+}
+
+function matches(f, active) {
+  const p = f.properties || {};
+  return active.every((a) => a.set.has(norm(p[a.field])));
+}
+
+function computePass(L_) {
+  const active = activeFilters(L_);
+  L_.pass = L_.features.map((f) => matches(f, active));
+  L_.passCount = L_.pass.reduce((n, v) => n + (v ? 1 : 0), 0);
+}
+
+// Pilihan nilai untuk baris filter ke-k: hanya dari fitur yang lolos filter sebelumnya
+function valueOptions(L_, k) {
+  const fld = L_.filters[k].field;
+  if (!fld) return [];
+  const active = activeFilters(L_, k);
+  const counts = new Map();
+  for (const f of L_.features) {
+    if (!matches(f, active)) continue;
+    const v = norm((f.properties || {})[fld]);
+    if (v === "") continue;
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], "id", { numeric: true }));
+}
+
+// Buang pilihan di filter berikutnya yang sudah tidak tersedia setelah filter ke-k berubah
+function pruneLater(L_, k) {
+  for (let j = k + 1; j < L_.filters.length; j++) {
+    const f = L_.filters[j];
+    if (!f.values.length) continue;
+    const ok = new Set(valueOptions(L_, j).map((o) => o[0]));
+    f.values = f.values.filter((v) => ok.has(v));
+  }
+}
+
+function guessFilters(fields) {
+  const rows = [];
+  for (const group of FILTER_GUESS) {
+    const hit = fields.find((f) => group.includes(f.toLowerCase()));
+    if (hit && !rows.some((r) => r.field === hit)) rows.push({ field: hit, values: [] });
+  }
+  return rows.length ? rows : [{ field: "", values: [] }];
+}
+
+function applyFilters(L_, zoom) {
+  computePass(L_);
+  buildGeo(L_);
+  updateStats();
+  renderLabels();
+  if (!zoom) return;
+  if (L_.passCount === 0) { toast("Tidak ada wilayah yang cocok dengan filter ini."); return; }
+  zoomTo(L_);
+}
+
+/* ---------- Memuat data ---------- */
+function normalize(json) {
+  if (json.type === "FeatureCollection") return json.features || [];
+  if (json.type === "Feature") return [json];
+  if (json.type && json.coordinates) return [{ type: "Feature", properties: {}, geometry: json }];
+  throw new Error("Format GeoJSON tidak dikenali.");
+}
+
+function addDataset(name, json, opts = {}) {
+  const features = normalize(json).filter((f) => f && f.geometry);
+  if (!features.length) throw new Error("Tidak ada fitur bergeometri di file ini.");
+
+  const sample = firstCoord(features[0].geometry);
+  if (sample && (Math.abs(sample[0]) > 180 || Math.abs(sample[1]) > 90)) {
+    throw new Error("Koordinat bukan lintang/bujur. Di QGIS, ekspor ulang dengan CRS EPSG:4326 (WGS 84).");
+  }
+
+  const fieldSet = new Set();
+  features.slice(0, 3000).forEach((f) => Object.keys(f.properties || {}).forEach((k) => fieldSet.add(k)));
+  const fields = [...fieldSet];
+
+  const guess = LABEL_GUESS.find((g) => fields.some((f) => f.toLowerCase() === g));
+  const guessField = guess ? fields.find((f) => f.toLowerCase() === guess) : null;
+
+  const id = nextId++;
+  const L_ = {
+    id, name, features, fields,
+    color: opts.color || PALETTE[(id - 1) % PALETTE.length],
+    fillOpacity: 0,
+    visible: opts.visible !== false,
+    labelA: guessField || "",
+    labelB: "",
+    geo: null,
+    filters: guessFilters(fields),
+    pass: features.map(() => true),
+    passCount: features.length,
+    points: features.map((f) => labelPoint(f.geometry)),
+  };
+
+  layers.push(L_);
+  buildGeo(L_);
+  renderPanel();
+  renderLabels();
+  if (L_.visible) zoomTo(L_);
+}
+
+async function readFiles(fileList) {
+  for (const file of fileList) {
+    try {
+      const text = await file.text();
+      addDataset(file.name.replace(/\.(geo)?json$/i, ""), JSON.parse(text));
+    } catch (e) {
+      toast(`${file.name}: ${e.message}`);
+    }
+  }
+}
+
+let loadDone = false;
+
+function normList(arr) {
+  return arr.map((x) => (typeof x === "string"
+    ? { name: x.replace(/\.(geo)?json$/i, ""), url: "data/" + x }
+    : x));
+}
+
+// Membaca isi folder "data" di repository lewat GitHub API (khusus GitHub Pages)
+async function listFromGithub() {
+  const host = location.hostname;
+  if (!host.endsWith(".github.io")) return [];
+  const owner = host.split(".")[0];
+  const seg = location.pathname.split("/").filter(Boolean)[0];
+  const repo = !seg || /\.html?$/i.test(seg) ? host : seg;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/data`);
+    if (!r.ok) return [];
+    const items = await r.json();
+    return items
+      .filter((x) => x.type === "file" && /\.(geo)?json$/i.test(x.name) && x.name.toLowerCase() !== "daftar.json" && !/^[._]/.test(x.name))
+      .map((x) => ({ name: x.name.replace(/\.(geo)?json$/i, ""), url: "data/" + x.name }));
+  } catch (e) { return []; }
+}
+
+async function discoverList() {
+  // 1. server lokal (jalankan.bat)
+  try {
+    const r = await fetch("api/info", { cache: "no-store" });
+    if (r.ok) {
+      const info = await r.json();
+      if (info.tiles) addLocalTiles(info.tiles);
+      return { list: info.layers || [], local: true };
+    }
+  } catch (e) { /* bukan mode lokal */ }
+  // 2. data/daftar.json (opsional)
+  try {
+    const r = await fetch("data/daftar.json", { cache: "no-cache" });
+    if (r.ok) {
+      const arr = await r.json();
+      if (Array.isArray(arr) && arr.length) return { list: normList(arr) };
+    }
+  } catch (e) { /* tidak ada */ }
+  // 3. AUTO_LAYERS
+  if (AUTO_LAYERS.length) return { list: AUTO_LAYERS };
+  // 4. GitHub Pages: baca folder data
+  return { list: await listFromGithub() };
+}
+
+async function loadAuto() {
+  if (location.protocol === "file:") {
+    loadDone = true; renderPanel();
+    toast("Dibuka langsung dari file, data tidak bisa dimuat otomatis. Pakai jalankan.bat atau tambah file manual.");
+    return;
+  }
+  $("loading").classList.add("show");
+  try {
+    const { list, local } = await discoverList();
+    if (!list.length) {
+      toast(local
+        ? 'Folder "data" masih kosong. Salin file GeoJSON ke sana lalu muat ulang halaman.'
+        : 'Belum ada file GeoJSON di folder "data". Taruh file di sana atau tambahkan manual.');
+    }
+    const results = await Promise.all(list.map(async (item) => {
+      try {
+        const r = await fetch(item.url, { cache: "no-cache" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return { item, json: await r.json() };
+      } catch (e) {
+        toast(`Gagal memuat ${item.url}.`);
+        return null;
+      }
+    }));
+    for (const res of results) {
+      if (!res) continue;
+      try { addDataset(res.item.name, res.json, res.item); }
+      catch (e) { toast(`${res.item.name}: ${e.message}`); }
+    }
+    fitAll();
+  } finally {
+    loadDone = true;
+    $("loading").classList.remove("show");
+    renderPanel();
+  }
+}
+
+// Menambahkan pilihan peta dasar offline bila folder "tiles" tersedia
+function addLocalTiles(t) {
+  bases.lokal = L.tileLayer("tiles/{z}/{x}/{y}.png", {
+    minZoom: t.min, maxZoom: 22, maxNativeZoom: t.max, attribution: "Peta offline",
+  });
+  if (TILES_LOKAL_GELAP) DARK_BASES.push("lokal");
+  const sel = $("basemap");
+  const opt = new Option("Peta offline (tiles lokal)", "lokal");
+  sel.insertBefore(opt, sel.firstChild);
+  sel.value = "lokal";
+  setBase("lokal");
+}
+
+/* ---------- Label ---------- */
+function labelText(L_, f) {
+  const p = f.properties || {};
+  const parts = [L_.labelA, L_.labelB]
+    .filter(Boolean)
+    .map((k) => p[k])
+    .filter((v) => v !== null && v !== undefined && String(v).trim() !== "")
+    .map((v) => String(v).trim());
+  return parts.join(" ");
+}
+
+function renderLabels() {
+  labelGroup.clearLayers();
+  const z = map.getZoom();
+  const minZ = +$("minzoom").value;
+  const fs = +$("fsize").value;
+  let shown = 0, hidden = false;
+
+  if (z >= minZ) {
+    const b = map.getBounds().pad(0.15);
+    outer:
+    for (const L_ of layers) {
+      if (!L_.visible || !L_.labelA) continue;
+      for (let i = 0; i < L_.features.length; i++) {
+        if (!L_.pass[i]) continue;
+        const pt = L_.points[i];
+        if (!pt || !b.contains(pt)) continue;
+        const txt = labelText(L_, L_.features[i]);
+        if (!txt) continue;
+        if (shown >= MAX_LABELS) { hidden = true; break outer; }
+        L.marker(pt, {
+          interactive: false, keyboard: false,
+          icon: L.divIcon({
+            className: "lbl", iconSize: [0, 0],
+            html: `<span style="font-size:${fs}px">${esc(txt)}</span>`,
+          }),
+        }).addTo(labelGroup);
+        shown++;
+      }
+    }
+  }
+
+  let msg = `Zoom ${z}`;
+  if (layers.some((l) => l.visible && l.labelA)) {
+    if (z < minZ) msg += `, label muncul mulai zoom ${minZ}`;
+    else msg += `, ${shown.toLocaleString("id-ID")} label${hidden ? " (dibatasi, zoom lebih dekat)" : ""}`;
+  }
+  $("status").textContent = msg;
+}
+
+/* ---------- Panel lapisan ---------- */
+// Opsi zoom yang menyisakan ruang untuk header dan panel mengambang
+function fitOpts() {
+  const panelOpen = !$("sidebar").classList.contains("hidden") && window.innerWidth > 760;
+  return panelOpen
+    ? { paddingTopLeft: [352, 84], paddingBottomRight: [50, 50] }
+    : { paddingTopLeft: [40, 84], paddingBottomRight: [50, 50] };
+}
+
+function fitAll() {
+  let b = null;
+  layers.forEach((l) => {
+    if (!l.geo || !l.visible) return;
+    const lb = l.geo.getBounds();
+    if (lb.isValid()) b = b ? b.extend(lb) : L.latLngBounds(lb.getSouthWest(), lb.getNorthEast());
+  });
+  if (b) map.fitBounds(b, fitOpts());
+}
+
+function zoomTo(L_) {
+  if (!L_.geo) return;
+  const b = L_.geo.getBounds();
+  if (b.isValid()) map.fitBounds(b, fitOpts());
+}
+
+function fieldOptions(L_, selectedField, noneLabel) {
+  const none = `<option value="">${noneLabel}</option>`;
+  return none + L_.fields.map((f) => `<option value="${esc(f)}" ${f === selectedField ? "selected" : ""}>${esc(f)}</option>`).join("");
+}
+
+function updateStats() {
+  $("stat-layer").textContent = layers.length.toLocaleString("id-ID");
+  $("stat-fitur").textContent = layers.reduce((n, l) => n + (l.visible ? l.passCount : 0), 0).toLocaleString("id-ID");
+}
+
+function comboSummary(flt) {
+  if (!flt.values.length) return "Semua";
+  if (flt.values.length === 1) return flt.values[0];
+  return `${flt.values.length} dipilih`;
+}
+
+function updateCount(L_, box) {
+  box.querySelector(".fcount").textContent =
+    `${L_.passCount.toLocaleString("id-ID")} dari ${L_.features.length.toLocaleString("id-ID")}`;
+}
+
+// Menggambar ulang baris-baris filter untuk satu lapisan
+function refreshFilters(L_, box) {
+  const rowsEl = box.querySelector(".frows");
+  rowsEl.innerHTML = "";
+
+  L_.filters.forEach((flt, k) => {
+    const row = document.createElement("div");
+    row.className = "frow";
+    row.innerHTML = `
+      <div class="frow-top">
+        <select class="f-field" aria-label="Atribut filter ${k + 1}">${fieldOptions(L_, flt.field, "Pilih atribut")}</select>
+        <button class="xbtn" title="Hapus filter" aria-label="Hapus filter ${k + 1}" ${L_.filters.length > 1 ? "" : "disabled"}>&times;</button>
+      </div>
+      <button class="combo ${flt.values.length ? "" : "empty"}" aria-haspopup="listbox" ${flt.field ? "" : "disabled"}>
+        <span class="combo-text">${esc(comboSummary(flt))}</span>
+      </button>`;
+
+    row.querySelector(".f-field").onchange = (e) => {
+      flt.field = e.target.value; flt.values = [];
+      pruneLater(L_, k);
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+    row.querySelector(".xbtn").onclick = () => {
+      L_.filters.splice(k, 1);
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+    const btn = row.querySelector(".combo");
+    btn.onclick = () => openCombo(L_, k, btn, box);
+    rowsEl.appendChild(row);
+  });
+
+  updateCount(L_, box);
+}
+
+/* ----- Daftar pilihan dengan kolom cari dan centang banyak ----- */
+const pop = document.createElement("div");
+pop.id = "combo-pop";
+pop.innerHTML = `
+  <input type="search" class="cp-search" placeholder="Cari..." aria-label="Cari nilai">
+  <div class="cp-actions">
+    <button class="linkbtn" data-a="all">Pilih semua hasil</button>
+    <button class="linkbtn" data-a="none">Kosongkan</button>
+  </div>
+  <div class="cp-list" role="listbox" aria-multiselectable="true"></div>
+  <div class="cp-foot"></div>`;
+document.body.appendChild(pop);
+const cpSearch = pop.querySelector(".cp-search");
+const cpList = pop.querySelector(".cp-list");
+const cpFoot = pop.querySelector(".cp-foot");
+let ctx = null; // { L_, k, btn, box, opts, changed }
+
+function renderPopList() {
+  const flt = ctx.L_.filters[ctx.k];
+  const q = cpSearch.value.trim().toLowerCase();
+  const sel = new Set(flt.values);
+  ctx.shown = ctx.opts.filter(([v]) => !q || v.toLowerCase().includes(q));
+  cpList.innerHTML = ctx.shown.length
+    ? ctx.shown.map(([v, n]) => `
+        <label class="cp-item" role="option">
+          <input type="checkbox" data-v="${esc(v)}" ${sel.has(v) ? "checked" : ""}>
+          <span class="cp-label">${esc(v)}</span><span class="cp-n">${n}</span>
+        </label>`).join("")
+    : `<div class="cp-empty">Tidak ada hasil</div>`;
+  cpFoot.textContent = `${flt.values.length} dipilih dari ${ctx.opts.length}`;
+}
+
+// Terapkan perubahan pilihan langsung ke peta (tanpa zoom, supaya tidak melompat saat mencentang)
+function commitLive() {
+  const { L_, k, btn, box } = ctx;
+  const flt = L_.filters[k];
+  ctx.changed = true;
+  applyFilters(L_, false);
+  btn.querySelector(".combo-text").textContent = comboSummary(flt);
+  btn.classList.toggle("empty", !flt.values.length);
+  updateCount(L_, box);
+  renderPopList();
+}
+
+function positionPop() {
+  const r = ctx.btn.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(Math.max(r.width, 280), vw - 16);
+  const left = Math.min(Math.max(8, r.left), vw - w - 8);
+  const below = vh - r.bottom - 8, above = r.top - 8;
+  const up = below < 300 && above > below;
+  const space = up ? above : below;
+  pop.style.width = w + "px";
+  pop.style.left = left + "px";
+  cpList.style.maxHeight = Math.max(140, Math.min(320, space - 125)) + "px";
+  if (up) { pop.style.top = "auto"; pop.style.bottom = (vh - r.top + 4) + "px"; }
+  else { pop.style.bottom = "auto"; pop.style.top = (r.bottom + 4) + "px"; }
+}
+
+function openCombo(L_, k, btn, box) {
+  if (ctx && ctx.btn === btn) { closePop(); return; }
+  closePop();
+  ctx = { L_, k, btn, box, opts: valueOptions(L_, k), shown: [], changed: false };
+  cpSearch.value = "";
+  renderPopList();
+  btn.classList.add("open");
+  pop.classList.add("show");
+  positionPop();
+  cpSearch.focus();
+}
+
+function closePop() {
+  if (!ctx) return;
+  const c = ctx;
+  ctx = null;
+  pop.classList.remove("show");
+  c.btn.classList.remove("open");
+  if (c.changed) {
+    pruneLater(c.L_, c.k);
+    applyFilters(c.L_, true);   // zoom sekali setelah selesai memilih
+    refreshFilters(c.L_, c.box);
+  }
+}
+
+cpSearch.oninput = () => renderPopList();
+cpList.onchange = (e) => {
+  const cb = e.target;
+  if (!cb.matches || !cb.matches("input[type=checkbox]")) return;
+  const flt = ctx.L_.filters[ctx.k];
+  const v = cb.dataset.v;
+  if (cb.checked) { if (!flt.values.includes(v)) flt.values.push(v); }
+  else flt.values = flt.values.filter((x) => x !== v);
+  commitLive();
+};
+pop.addEventListener("click", (e) => {
+  const a = e.target.dataset && e.target.dataset.a;
+  if (!a || !ctx) return;
+  const flt = ctx.L_.filters[ctx.k];
+  if (a === "all") ctx.shown.forEach(([v]) => { if (!flt.values.includes(v)) flt.values.push(v); });
+  if (a === "none") flt.values = [];
+  commitLive();
+});
+document.addEventListener("pointerdown", (e) => {
+  if (!ctx || pop.contains(e.target) || ctx.btn.contains(e.target)) return;
+  closePop();
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ctx) { const b = ctx.btn; closePop(); b.focus(); }
+});
+window.addEventListener("resize", closePop);
+document.querySelector(".sb-body").addEventListener("scroll", closePop);
+
+function renderPanel() {
+  updateStats();
+  const host = $("layers");
+  host.innerHTML = "";
+  $("no-layer").style.display = layers.length || !loadDone ? "none" : "block";
+
+  layers.forEach((L_) => {
+    const div = document.createElement("div");
+    div.className = "layer" + (L_.visible ? "" : " off");
+    div.innerHTML = `
+      <div class="layer-top">
+        <input type="checkbox" ${L_.visible ? "checked" : ""} aria-label="Tampilkan batas wilayah ${esc(L_.name)}">
+        <span class="layer-name" title="${esc(L_.name)}">${esc(L_.name)}</span>
+        <input type="color" value="${L_.color}" aria-label="Warna garis">
+      </div>
+      <div class="layer-meta">${L_.features.length.toLocaleString("id-ID")} fitur</div>
+
+      <div class="filters">
+        <div class="fhead"><span>Filter wilayah</span><span class="fcount"></span></div>
+        <div class="frows"></div>
+        <div class="factions">
+          <button class="linkbtn" data-act="addf">+ Tambah filter</button>
+          <button class="linkbtn" data-act="resetf">Reset filter</button>
+        </div>
+      </div>
+
+      <label class="field"><span>Label utama</span>
+        <select data-k="a">${fieldOptions(L_, L_.labelA, "Tanpa label")}</select></label>
+      <label class="field"><span>Label tambahan (digabung di sebelahnya)</span>
+        <select data-k="b">${fieldOptions(L_, L_.labelB, "Tidak ada")}</select></label>
+      <label class="field"><span>Warna isi poligon</span>
+        <input type="range" min="0" max="0.7" step="0.05" value="${L_.fillOpacity}"></label>
+      <div class="layer-actions">
+        <button data-act="zoom">Zoom ke wilayah</button>
+        <button data-act="del" class="danger">Hapus</button>
+      </div>`;
+
+    const box = div.querySelector(".filters");
+    refreshFilters(L_, box);
+    box.querySelector('[data-act="addf"]').onclick = () => {
+      L_.filters.push({ field: "", values: [] });
+      refreshFilters(L_, box);
+    };
+    box.querySelector('[data-act="resetf"]').onclick = () => {
+      L_.filters.forEach((f) => (f.values = []));
+      applyFilters(L_, true); refreshFilters(L_, box);
+    };
+
+    const [chk, color] = div.querySelectorAll(".layer-top input");
+    chk.onchange = () => {
+      L_.visible = chk.checked;
+      div.classList.toggle("off", !L_.visible);
+      if (L_.visible) L_.geo.addTo(map); else map.removeLayer(L_.geo);
+      updateStats();
+      renderLabels();
+    };
+    color.oninput = () => { L_.color = color.value; restyle(L_); };
+
+    div.querySelector('select[data-k="a"]').onchange = (e) => { L_.labelA = e.target.value; renderLabels(); };
+    div.querySelector('select[data-k="b"]').onchange = (e) => { L_.labelB = e.target.value; renderLabels(); };
+    div.querySelector('input[type=range]').oninput = (e) => { L_.fillOpacity = +e.target.value; restyle(L_); };
+    div.querySelector('[data-act="zoom"]').onclick = () => zoomTo(L_);
+    div.querySelector('[data-act="del"]').onclick = () => {
+      map.removeLayer(L_.geo);
+      layers.splice(layers.indexOf(L_), 1);
+      renderPanel();
+      renderLabels();
+    };
+    host.appendChild(div);
+  });
+}
+
+/* ---------- Kontrol umum ---------- */
+const drop = $("drop"), fileInput = $("file");
+drop.onclick = () => fileInput.click();
+$("addbtn").onclick = () => fileInput.click();
+drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } };
+fileInput.onchange = () => { readFiles(fileInput.files); fileInput.value = ""; };
+
+["dragenter", "dragover"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+document.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+
+$("minzoom").oninput = (e) => { $("v-minzoom").textContent = e.target.value; renderLabels(); };
+$("fsize").oninput = (e) => { $("v-fsize").textContent = e.target.value; renderLabels(); };
+$("basemap").onchange = (e) => setBase(e.target.value);
+
+$("toggle").onclick = () => {
+  const sb = $("sidebar");
+  const hide = !sb.classList.contains("hidden");
+  sb.classList.toggle("hidden", hide);
+  $("toggle").setAttribute("aria-expanded", String(!hide));
+  $("toggle").title = hide ? "Tampilkan panel" : "Sembunyikan panel";
+  closePop();
+};
+
+map.on("moveend zoomend", renderLabels);
+renderLabels();
+loadAuto();
+</script>
+</body>
+</html>
